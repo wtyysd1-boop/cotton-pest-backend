@@ -1,0 +1,25 @@
+﻿{
+  "name": "cotton-pest-backend",
+  "version": "2.0.0",
+  "description": "棉花病虫害智能识别系统 - 后端服务（Express + MongoDB + 和风天气）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js",
+    "migrate": "node scripts/migrateFromJson.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.3"
+  }
+}
