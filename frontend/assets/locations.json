@@ -1,0 +1,1082 @@
+[
+  {
+    "name": "长沙市",
+    "type": "city",
+    "parent": "",
+    "lat": 28.2282,
+    "lng": 112.9388,
+    "adcode": 430100
+  },
+  {
+    "name": "芙蓉区",
+    "type": "district",
+    "parent": "长沙市",
+    "lat": 28.1854,
+    "lng": 113.0331,
+    "adcode": 430102
+  },
+  {
+    "name": "天心区",
+    "type": "district",
+    "parent": "长沙市",
+    "lat": 28.1141,
+    "lng": 112.9899,
+    "adcode": 430103
+  },
+  {
+    "name": "岳麓区",
+    "type": "district",
+    "parent": "长沙市",
+    "lat": 28.2356,
+    "lng": 112.9314,
+    "adcode": 430104
+  },
+  {
+    "name": "开福区",
+    "type": "district",
+    "parent": "长沙市",
+    "lat": 28.2564,
+    "lng": 112.9855,
+    "adcode": 430105
+  },
+  {
+    "name": "雨花区",
+    "type": "district",
+    "parent": "长沙市",
+    "lat": 28.1357,
+    "lng": 113.038,
+    "adcode": 430111
+  },
+  {
+    "name": "望城区",
+    "type": "district",
+    "parent": "长沙市",
+    "lat": 28.3611,
+    "lng": 112.8195,
+    "adcode": 430112
+  },
+  {
+    "name": "长沙县",
+    "type": "county",
+    "parent": "长沙市",
+    "lat": 28.2462,
+    "lng": 113.0811,
+    "adcode": 430121
+  },
+  {
+    "name": "浏阳市",
+    "type": "county",
+    "parent": "长沙市",
+    "lat": 28.1628,
+    "lng": 113.643,
+    "adcode": 430181
+  },
+  {
+    "name": "宁乡市",
+    "type": "county",
+    "parent": "长沙市",
+    "lat": 28.248,
+    "lng": 112.5534,
+    "adcode": 430182
+  },
+  {
+    "name": "株洲市",
+    "type": "city",
+    "parent": "",
+    "lat": 27.8278,
+    "lng": 113.1339,
+    "adcode": 430200
+  },
+  {
+    "name": "荷塘区",
+    "type": "district",
+    "parent": "株洲市",
+    "lat": 27.8559,
+    "lng": 113.1735,
+    "adcode": 430202
+  },
+  {
+    "name": "芦淞区",
+    "type": "district",
+    "parent": "株洲市",
+    "lat": 27.7851,
+    "lng": 113.1527,
+    "adcode": 430203
+  },
+  {
+    "name": "石峰区",
+    "type": "district",
+    "parent": "株洲市",
+    "lat": 27.8759,
+    "lng": 113.1179,
+    "adcode": 430204
+  },
+  {
+    "name": "天元区",
+    "type": "district",
+    "parent": "株洲市",
+    "lat": 27.8267,
+    "lng": 113.0822,
+    "adcode": 430211
+  },
+  {
+    "name": "渌口区",
+    "type": "district",
+    "parent": "株洲市",
+    "lat": 27.6995,
+    "lng": 113.144,
+    "adcode": 430212
+  },
+  {
+    "name": "攸县",
+    "type": "county",
+    "parent": "株洲市",
+    "lat": 27.0003,
+    "lng": 113.3964,
+    "adcode": 430223
+  },
+  {
+    "name": "茶陵县",
+    "type": "county",
+    "parent": "株洲市",
+    "lat": 26.7775,
+    "lng": 113.5395,
+    "adcode": 430224
+  },
+  {
+    "name": "炎陵县",
+    "type": "county",
+    "parent": "株洲市",
+    "lat": 26.4899,
+    "lng": 113.7726,
+    "adcode": 430225
+  },
+  {
+    "name": "湘潭市",
+    "type": "city",
+    "parent": "",
+    "lat": 27.8297,
+    "lng": 112.9441,
+    "adcode": 430300
+  },
+  {
+    "name": "雨湖区",
+    "type": "district",
+    "parent": "湘潭市",
+    "lat": 27.8568,
+    "lng": 112.9072,
+    "adcode": 430302
+  },
+  {
+    "name": "岳塘区",
+    "type": "district",
+    "parent": "湘潭市",
+    "lat": 27.8589,
+    "lng": 112.9694,
+    "adcode": 430304
+  },
+  {
+    "name": "湘潭县",
+    "type": "county",
+    "parent": "湘潭市",
+    "lat": 27.7786,
+    "lng": 112.9508,
+    "adcode": 430321
+  },
+  {
+    "name": "湘乡市",
+    "type": "county",
+    "parent": "湘潭市",
+    "lat": 27.7341,
+    "lng": 112.5351,
+    "adcode": 430381
+  },
+  {
+    "name": "韶山市",
+    "type": "county",
+    "parent": "湘潭市",
+    "lat": 27.915,
+    "lng": 112.5267,
+    "adcode": 430382
+  },
+  {
+    "name": "衡阳市",
+    "type": "city",
+    "parent": "",
+    "lat": 26.8982,
+    "lng": 112.572,
+    "adcode": 430400
+  },
+  {
+    "name": "珠晖区",
+    "type": "district",
+    "parent": "衡阳市",
+    "lat": 26.8948,
+    "lng": 112.6206,
+    "adcode": 430405
+  },
+  {
+    "name": "雁峰区",
+    "type": "district",
+    "parent": "衡阳市",
+    "lat": 26.8886,
+    "lng": 112.6167,
+    "adcode": 430406
+  },
+  {
+    "name": "石鼓区",
+    "type": "district",
+    "parent": "衡阳市",
+    "lat": 26.9437,
+    "lng": 112.6105,
+    "adcode": 430407
+  },
+  {
+    "name": "蒸湘区",
+    "type": "district",
+    "parent": "衡阳市",
+    "lat": 26.912,
+    "lng": 112.6032,
+    "adcode": 430408
+  },
+  {
+    "name": "南岳区",
+    "type": "district",
+    "parent": "衡阳市",
+    "lat": 27.2324,
+    "lng": 112.7386,
+    "adcode": 430412
+  },
+  {
+    "name": "衡阳县",
+    "type": "county",
+    "parent": "衡阳市",
+    "lat": 26.9696,
+    "lng": 112.3708,
+    "adcode": 430421
+  },
+  {
+    "name": "衡南县",
+    "type": "county",
+    "parent": "衡阳市",
+    "lat": 26.7383,
+    "lng": 112.6779,
+    "adcode": 430422
+  },
+  {
+    "name": "衡山县",
+    "type": "county",
+    "parent": "衡阳市",
+    "lat": 27.2302,
+    "lng": 112.8683,
+    "adcode": 430423
+  },
+  {
+    "name": "衡东县",
+    "type": "county",
+    "parent": "衡阳市",
+    "lat": 27.0812,
+    "lng": 112.9532,
+    "adcode": 430424
+  },
+  {
+    "name": "祁东县",
+    "type": "county",
+    "parent": "衡阳市",
+    "lat": 26.7996,
+    "lng": 112.0904,
+    "adcode": 430426
+  },
+  {
+    "name": "耒阳市",
+    "type": "county",
+    "parent": "衡阳市",
+    "lat": 26.4223,
+    "lng": 112.8599,
+    "adcode": 430481
+  },
+  {
+    "name": "常宁市",
+    "type": "county",
+    "parent": "衡阳市",
+    "lat": 26.4209,
+    "lng": 112.3999,
+    "adcode": 430482
+  },
+  {
+    "name": "邵阳市",
+    "type": "city",
+    "parent": "",
+    "lat": 27.2389,
+    "lng": 111.4676,
+    "adcode": 430500
+  },
+  {
+    "name": "双清区",
+    "type": "district",
+    "parent": "邵阳市",
+    "lat": 27.2325,
+    "lng": 111.4966,
+    "adcode": 430502
+  },
+  {
+    "name": "大祥区",
+    "type": "district",
+    "parent": "邵阳市",
+    "lat": 27.2215,
+    "lng": 111.439,
+    "adcode": 430503
+  },
+  {
+    "name": "北塔区",
+    "type": "district",
+    "parent": "邵阳市",
+    "lat": 27.2465,
+    "lng": 111.452,
+    "adcode": 430511
+  },
+  {
+    "name": "邵东市",
+    "type": "county",
+    "parent": "邵阳市",
+    "lat": 27.2584,
+    "lng": 111.7448,
+    "adcode": 430521
+  },
+  {
+    "name": "新邵县",
+    "type": "county",
+    "parent": "邵阳市",
+    "lat": 27.3208,
+    "lng": 111.459,
+    "adcode": 430522
+  },
+  {
+    "name": "邵阳县",
+    "type": "county",
+    "parent": "邵阳市",
+    "lat": 26.9906,
+    "lng": 111.2742,
+    "adcode": 430523
+  },
+  {
+    "name": "隆回县",
+    "type": "county",
+    "parent": "邵阳市",
+    "lat": 27.114,
+    "lng": 111.0324,
+    "adcode": 430524
+  },
+  {
+    "name": "洞口县",
+    "type": "county",
+    "parent": "邵阳市",
+    "lat": 27.0603,
+    "lng": 110.5759,
+    "adcode": 430525
+  },
+  {
+    "name": "绥宁县",
+    "type": "county",
+    "parent": "邵阳市",
+    "lat": 26.5819,
+    "lng": 110.1557,
+    "adcode": 430527
+  },
+  {
+    "name": "新宁县",
+    "type": "county",
+    "parent": "邵阳市",
+    "lat": 26.4334,
+    "lng": 110.857,
+    "adcode": 430528
+  },
+  {
+    "name": "城步县",
+    "type": "county",
+    "parent": "邵阳市",
+    "lat": 26.3906,
+    "lng": 110.3222,
+    "adcode": 430529
+  },
+  {
+    "name": "武冈市",
+    "type": "county",
+    "parent": "邵阳市",
+    "lat": 26.7268,
+    "lng": 110.6318,
+    "adcode": 430581
+  },
+  {
+    "name": "岳阳市",
+    "type": "city",
+    "parent": "",
+    "lat": 29.3572,
+    "lng": 113.1289,
+    "adcode": 430600
+  },
+  {
+    "name": "岳阳楼区",
+    "type": "district",
+    "parent": "岳阳市",
+    "lat": 29.3719,
+    "lng": 113.1297,
+    "adcode": 430602
+  },
+  {
+    "name": "云溪区",
+    "type": "district",
+    "parent": "岳阳市",
+    "lat": 29.4734,
+    "lng": 113.2724,
+    "adcode": 430603
+  },
+  {
+    "name": "君山区",
+    "type": "district",
+    "parent": "岳阳市",
+    "lat": 29.4612,
+    "lng": 113.0064,
+    "adcode": 430611
+  },
+  {
+    "name": "岳阳县",
+    "type": "county",
+    "parent": "岳阳市",
+    "lat": 29.1442,
+    "lng": 113.1164,
+    "adcode": 430621
+  },
+  {
+    "name": "华容县",
+    "type": "county",
+    "parent": "岳阳市",
+    "lat": 29.5311,
+    "lng": 112.5409,
+    "adcode": 430623
+  },
+  {
+    "name": "湘阴县",
+    "type": "county",
+    "parent": "岳阳市",
+    "lat": 28.6891,
+    "lng": 112.9093,
+    "adcode": 430624
+  },
+  {
+    "name": "平江县",
+    "type": "county",
+    "parent": "岳阳市",
+    "lat": 28.702,
+    "lng": 113.5811,
+    "adcode": 430626
+  },
+  {
+    "name": "汨罗市",
+    "type": "county",
+    "parent": "岳阳市",
+    "lat": 28.8064,
+    "lng": 113.0673,
+    "adcode": 430681
+  },
+  {
+    "name": "临湘市",
+    "type": "county",
+    "parent": "岳阳市",
+    "lat": 29.4767,
+    "lng": 113.4505,
+    "adcode": 430682
+  },
+  {
+    "name": "常德市",
+    "type": "city",
+    "parent": "",
+    "lat": 29.0317,
+    "lng": 111.6985,
+    "adcode": 430700
+  },
+  {
+    "name": "武陵区",
+    "type": "district",
+    "parent": "常德市",
+    "lat": 29.0532,
+    "lng": 111.6832,
+    "adcode": 430702
+  },
+  {
+    "name": "鼎城区",
+    "type": "district",
+    "parent": "常德市",
+    "lat": 29.0187,
+    "lng": 111.6808,
+    "adcode": 430703
+  },
+  {
+    "name": "安乡县",
+    "type": "county",
+    "parent": "常德市",
+    "lat": 29.4118,
+    "lng": 112.171,
+    "adcode": 430721
+  },
+  {
+    "name": "汉寿县",
+    "type": "county",
+    "parent": "常德市",
+    "lat": 28.906,
+    "lng": 111.9705,
+    "adcode": 430722
+  },
+  {
+    "name": "澧县",
+    "type": "county",
+    "parent": "常德市",
+    "lat": 29.6332,
+    "lng": 111.7585,
+    "adcode": 430723
+  },
+  {
+    "name": "临澧县",
+    "type": "county",
+    "parent": "常德市",
+    "lat": 29.441,
+    "lng": 111.6475,
+    "adcode": 430724
+  },
+  {
+    "name": "桃源县",
+    "type": "county",
+    "parent": "常德市",
+    "lat": 28.9026,
+    "lng": 111.4889,
+    "adcode": 430725
+  },
+  {
+    "name": "石门县",
+    "type": "county",
+    "parent": "常德市",
+    "lat": 29.5843,
+    "lng": 111.38,
+    "adcode": 430726
+  },
+  {
+    "name": "津市市",
+    "type": "county",
+    "parent": "常德市",
+    "lat": 29.6056,
+    "lng": 111.8775,
+    "adcode": 430781
+  },
+  {
+    "name": "张家界市",
+    "type": "city",
+    "parent": "",
+    "lat": 29.1167,
+    "lng": 110.4792,
+    "adcode": 430800
+  },
+  {
+    "name": "永定区",
+    "type": "district",
+    "parent": "张家界市",
+    "lat": 29.1197,
+    "lng": 110.5371,
+    "adcode": 430802
+  },
+  {
+    "name": "武陵源区",
+    "type": "district",
+    "parent": "张家界市",
+    "lat": 29.3456,
+    "lng": 110.5504,
+    "adcode": 430811
+  },
+  {
+    "name": "慈利县",
+    "type": "county",
+    "parent": "张家界市",
+    "lat": 29.4297,
+    "lng": 111.1391,
+    "adcode": 430821
+  },
+  {
+    "name": "桑植县",
+    "type": "county",
+    "parent": "张家界市",
+    "lat": 29.4141,
+    "lng": 110.2045,
+    "adcode": 430822
+  },
+  {
+    "name": "益阳市",
+    "type": "city",
+    "parent": "",
+    "lat": 28.5551,
+    "lng": 112.3555,
+    "adcode": 430900
+  },
+  {
+    "name": "资阳区",
+    "type": "district",
+    "parent": "益阳市",
+    "lat": 28.591,
+    "lng": 112.3243,
+    "adcode": 430902
+  },
+  {
+    "name": "赫山区",
+    "type": "district",
+    "parent": "益阳市",
+    "lat": 28.5794,
+    "lng": 112.374,
+    "adcode": 430903
+  },
+  {
+    "name": "南县",
+    "type": "county",
+    "parent": "益阳市",
+    "lat": 29.3616,
+    "lng": 112.3963,
+    "adcode": 430921
+  },
+  {
+    "name": "桃江县",
+    "type": "county",
+    "parent": "益阳市",
+    "lat": 28.5182,
+    "lng": 112.1558,
+    "adcode": 430922
+  },
+  {
+    "name": "安化县",
+    "type": "county",
+    "parent": "益阳市",
+    "lat": 28.3742,
+    "lng": 111.213,
+    "adcode": 430923
+  },
+  {
+    "name": "沅江市",
+    "type": "county",
+    "parent": "益阳市",
+    "lat": 28.8441,
+    "lng": 112.3557,
+    "adcode": 430981
+  },
+  {
+    "name": "郴州市",
+    "type": "city",
+    "parent": "",
+    "lat": 25.7706,
+    "lng": 113.0162,
+    "adcode": 431000
+  },
+  {
+    "name": "北湖区",
+    "type": "district",
+    "parent": "郴州市",
+    "lat": 25.784,
+    "lng": 113.011,
+    "adcode": 431002
+  },
+  {
+    "name": "苏仙区",
+    "type": "district",
+    "parent": "郴州市",
+    "lat": 25.8004,
+    "lng": 113.0423,
+    "adcode": 431003
+  },
+  {
+    "name": "桂阳县",
+    "type": "county",
+    "parent": "郴州市",
+    "lat": 25.7542,
+    "lng": 112.7341,
+    "adcode": 431021
+  },
+  {
+    "name": "宜章县",
+    "type": "county",
+    "parent": "郴州市",
+    "lat": 25.3996,
+    "lng": 112.9488,
+    "adcode": 431022
+  },
+  {
+    "name": "永兴县",
+    "type": "county",
+    "parent": "郴州市",
+    "lat": 26.1272,
+    "lng": 113.1164,
+    "adcode": 431023
+  },
+  {
+    "name": "嘉禾县",
+    "type": "county",
+    "parent": "郴州市",
+    "lat": 25.5875,
+    "lng": 112.369,
+    "adcode": 431024
+  },
+  {
+    "name": "临武县",
+    "type": "county",
+    "parent": "郴州市",
+    "lat": 25.276,
+    "lng": 112.5635,
+    "adcode": 431025
+  },
+  {
+    "name": "汝城县",
+    "type": "county",
+    "parent": "郴州市",
+    "lat": 25.5506,
+    "lng": 113.6847,
+    "adcode": 431026
+  },
+  {
+    "name": "桂东县",
+    "type": "county",
+    "parent": "郴州市",
+    "lat": 26.0775,
+    "lng": 113.9446,
+    "adcode": 431027
+  },
+  {
+    "name": "安仁县",
+    "type": "county",
+    "parent": "郴州市",
+    "lat": 26.7091,
+    "lng": 113.2694,
+    "adcode": 431028
+  },
+  {
+    "name": "资兴市",
+    "type": "county",
+    "parent": "郴州市",
+    "lat": 25.9762,
+    "lng": 113.2362,
+    "adcode": 431081
+  },
+  {
+    "name": "永州市",
+    "type": "city",
+    "parent": "",
+    "lat": 26.4203,
+    "lng": 111.613,
+    "adcode": 431100
+  },
+  {
+    "name": "零陵区",
+    "type": "district",
+    "parent": "永州市",
+    "lat": 26.2219,
+    "lng": 111.6311,
+    "adcode": 431102
+  },
+  {
+    "name": "冷水滩区",
+    "type": "district",
+    "parent": "永州市",
+    "lat": 26.4614,
+    "lng": 111.5934,
+    "adcode": 431103
+  },
+  {
+    "name": "祁阳市",
+    "type": "county",
+    "parent": "永州市",
+    "lat": 26.5802,
+    "lng": 111.8407,
+    "adcode": 431121
+  },
+  {
+    "name": "东安县",
+    "type": "county",
+    "parent": "永州市",
+    "lat": 26.392,
+    "lng": 111.3165,
+    "adcode": 431122
+  },
+  {
+    "name": "双牌县",
+    "type": "county",
+    "parent": "永州市",
+    "lat": 25.9619,
+    "lng": 111.6601,
+    "adcode": 431123
+  },
+  {
+    "name": "道县",
+    "type": "county",
+    "parent": "永州市",
+    "lat": 25.5268,
+    "lng": 111.6014,
+    "adcode": 431124
+  },
+  {
+    "name": "江永县",
+    "type": "county",
+    "parent": "永州市",
+    "lat": 25.2735,
+    "lng": 111.3439,
+    "adcode": 431125
+  },
+  {
+    "name": "宁远县",
+    "type": "county",
+    "parent": "永州市",
+    "lat": 25.9709,
+    "lng": 111.9458,
+    "adcode": 431126
+  },
+  {
+    "name": "蓝山县",
+    "type": "county",
+    "parent": "永州市",
+    "lat": 25.3697,
+    "lng": 112.1968,
+    "adcode": 431127
+  },
+  {
+    "name": "新田县",
+    "type": "county",
+    "parent": "永州市",
+    "lat": 25.9042,
+    "lng": 112.2033,
+    "adcode": 431128
+  },
+  {
+    "name": "江华县",
+    "type": "county",
+    "parent": "永州市",
+    "lat": 25.1855,
+    "lng": 111.5794,
+    "adcode": 431129
+  },
+  {
+    "name": "怀化市",
+    "type": "city",
+    "parent": "",
+    "lat": 27.5698,
+    "lng": 109.9981,
+    "adcode": 431200
+  },
+  {
+    "name": "鹤城区",
+    "type": "district",
+    "parent": "怀化市",
+    "lat": 27.5494,
+    "lng": 109.9652,
+    "adcode": 431202
+  },
+  {
+    "name": "中方县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 27.4401,
+    "lng": 109.9447,
+    "adcode": 431221
+  },
+  {
+    "name": "沅陵县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 28.4527,
+    "lng": 110.3939,
+    "adcode": 431222
+  },
+  {
+    "name": "辰溪县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 28.0064,
+    "lng": 110.1834,
+    "adcode": 431223
+  },
+  {
+    "name": "溆浦县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 27.9083,
+    "lng": 110.5949,
+    "adcode": 431224
+  },
+  {
+    "name": "会同县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 26.8872,
+    "lng": 109.7353,
+    "adcode": 431225
+  },
+  {
+    "name": "麻阳县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 27.8574,
+    "lng": 109.8026,
+    "adcode": 431226
+  },
+  {
+    "name": "新晃县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 27.3526,
+    "lng": 109.175,
+    "adcode": 431227
+  },
+  {
+    "name": "芷江县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 27.443,
+    "lng": 109.6848,
+    "adcode": 431228
+  },
+  {
+    "name": "靖州县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 26.5721,
+    "lng": 109.6962,
+    "adcode": 431229
+  },
+  {
+    "name": "通道县",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 26.1581,
+    "lng": 109.7843,
+    "adcode": 431230
+  },
+  {
+    "name": "洪江市",
+    "type": "county",
+    "parent": "怀化市",
+    "lat": 27.209,
+    "lng": 109.8361,
+    "adcode": 431281
+  },
+  {
+    "name": "娄底市",
+    "type": "city",
+    "parent": "",
+    "lat": 27.7266,
+    "lng": 111.9945,
+    "adcode": 431300
+  },
+  {
+    "name": "娄星区",
+    "type": "district",
+    "parent": "娄底市",
+    "lat": 27.7299,
+    "lng": 112.0017,
+    "adcode": 431302
+  },
+  {
+    "name": "双峰县",
+    "type": "county",
+    "parent": "娄底市",
+    "lat": 27.457,
+    "lng": 112.1753,
+    "adcode": 431321
+  },
+  {
+    "name": "新化县",
+    "type": "county",
+    "parent": "娄底市",
+    "lat": 27.7265,
+    "lng": 111.3276,
+    "adcode": 431322
+  },
+  {
+    "name": "冷水江市",
+    "type": "county",
+    "parent": "娄底市",
+    "lat": 27.6861,
+    "lng": 111.4349,
+    "adcode": 431381
+  },
+  {
+    "name": "涟源市",
+    "type": "county",
+    "parent": "娄底市",
+    "lat": 27.6926,
+    "lng": 111.6643,
+    "adcode": 431382
+  },
+  {
+    "name": "湘西州",
+    "type": "city",
+    "parent": "",
+    "lat": 28.312,
+    "lng": 109.7397,
+    "adcode": 433100
+  },
+  {
+    "name": "吉首市",
+    "type": "county",
+    "parent": "湘西州",
+    "lat": 28.2624,
+    "lng": 109.6981,
+    "adcode": 433101
+  },
+  {
+    "name": "泸溪县",
+    "type": "county",
+    "parent": "湘西州",
+    "lat": 28.2166,
+    "lng": 110.2195,
+    "adcode": 433122
+  },
+  {
+    "name": "凤凰县",
+    "type": "county",
+    "parent": "湘西州",
+    "lat": 27.9582,
+    "lng": 109.5811,
+    "adcode": 433123
+  },
+  {
+    "name": "花垣县",
+    "type": "county",
+    "parent": "湘西州",
+    "lat": 28.5721,
+    "lng": 109.4822,
+    "adcode": 433124
+  },
+  {
+    "name": "保靖县",
+    "type": "county",
+    "parent": "湘西州",
+    "lat": 28.6999,
+    "lng": 109.6605,
+    "adcode": 433125
+  },
+  {
+    "name": "古丈县",
+    "type": "county",
+    "parent": "湘西州",
+    "lat": 28.6169,
+    "lng": 109.9506,
+    "adcode": 433126
+  },
+  {
+    "name": "永顺县",
+    "type": "county",
+    "parent": "湘西州",
+    "lat": 29.0012,
+    "lng": 109.8515,
+    "adcode": 433127
+  },
+  {
+    "name": "龙山县",
+    "type": "county",
+    "parent": "湘西州",
+    "lat": 29.4577,
+    "lng": 109.4441,
+    "adcode": 433130
+  }
+]
