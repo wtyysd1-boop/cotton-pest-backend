@@ -33,7 +33,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/stats', statsRouter);
 
 // ── 静态文件（前端页面） ──
-const frontendPath = path.join(__dirname, '..', 'frontend');
+const frontendPath = path.join(__dirname, 'frontend');
 app.use(express.static(frontendPath));
 
 // 前端入口：自动返回 index.html
