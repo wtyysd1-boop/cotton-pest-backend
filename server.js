@@ -1,7 +1,8 @@
-﻿require('dotenv').config();
+require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
@@ -15,7 +16,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ── 中间件 ──
-app.use(cors());
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: allowedOrigins.length > 0 ? allowedOrigins : false
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -33,15 +44,24 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/stats', statsRouter);
 
 // ── 静态文件（前端页面） ──
-const frontendPath = path.join(__dirname, 'frontend');
+const siblingFrontend = path.join(__dirname, '..', 'frontend');
+const frontendPath = fs.existsSync(siblingFrontend) ? siblingFrontend : path.join(__dirname, 'frontend');
 app.use(express.static(frontendPath));
+
+// 上传图片静态目录
+const uploadsPath = path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath));
 
 // 前端入口：自动返回 index.html
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ code: 404, message: '接口不存在' });
   }
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  const indexFile = path.join(frontendPath, 'index.html');
+  if (!fs.existsSync(indexFile)) {
+    return res.status(404).json({ code: 404, message: '前端页面未部署，请检查 frontend 目录' });
+  }
+  res.sendFile(indexFile);
 });
 
 // ── 错误处理 ──
@@ -64,7 +84,8 @@ async function start() {
     console.log('  ==========================================');
     console.log('  前端页面: http://localhost:' + PORT);
     console.log('  环境: ' + (process.env.NODE_ENV || 'development'));
-    console.log('  MongoDB: ' + (process.env.MONGODB_URI || 'localhost'));
+    console.log('  MongoDB: ' + (process.env.MONGODB_URI ? '已配置' : '未配置'));
+    console.log('  API Key: ' + (process.env.API_KEY ? '已配置' : '使用开发默认值'));
     console.log('  和风天气: ' + (process.env.QWEATHER_KEY ? '已配置' : '未配置'));
     console.log('============================================');
   });
