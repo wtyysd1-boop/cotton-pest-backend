@@ -216,8 +216,17 @@ router.post('/miniapp', async (req, res, next) => {
     });
     var weather = await genWeather(lng, lat);
     report.weather = weather;
-    await report.save();
-    res.json({ code: 0, message: '导入成功', data: { id: report._id.toString() } });
+    const savedReport = await report.save();
+
+console.log("MongoDB保存成功:", savedReport._id.toString());
+
+res.json({
+  code: 0,
+  message: '导入成功',
+  data: {
+    id: savedReport._id.toString()
+  }
+});
   } catch (err) {
     next(err);
   }
