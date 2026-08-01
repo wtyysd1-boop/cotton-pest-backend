@@ -182,6 +182,10 @@ function findNearestCity(lng, lat) {
  * 接收小程序识别结果，转换为 PestReport 格式存入 MongoDB
  */
 router.post('/miniapp', async (req, res, next) => {
+
+  console.log("收到小程序数据:");
+  console.log(req.body);
+
   try {
     const { results, photo, location, time } = req.body;
     if (!results || !Array.isArray(results) || results.length === 0) {
