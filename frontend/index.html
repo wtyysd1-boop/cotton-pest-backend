@@ -181,14 +181,11 @@ TC=echarts.init(document.getElementById("trendChart"));
 window.addEventListener("resize",function(){SC.resize();SeC.resize();TC.resize()});
 map=new AMap.Map("mapContainer",{
 center:[111.8,27.5],
-zoom:7.8,
+zoom:7.2,
 layers:[
 new AMap.TileLayer.Satellite(),
 new AMap.TileLayer.RoadNet()
-],
-showIndoorMap:false,
-expandZoomRange:true,
-zooms:[5,18]
+]
 });
 
 window._amap=map;
@@ -196,7 +193,15 @@ AMap.plugin(["AMap.ToolBar"],function(){map.addControl(new AMap.ToolBar({positio
 map.on("complete",function(){ld().then(function(){document.getElementById("loading").style.display="none"})});
 }
 async function ld(){var r=await fetch(BACKEND_URL+"/api/areas");var j=await r.json();if(j.code!==0)return;var c=j.data;c.forEach(function(x){cityMap[x.name]=x;cityOrder.push(x.name)});await lg(c);await lp(curRange);await ls("all",curRange)}
-async function lg(cities){var r=await fetch("assets/hunan.json");var geo=await r.json();geo.features.forEach(function(f){var nm=f.properties.name;if(!cityMap[nm])return;var ci=cityMap[nm];var cl=f.geometry.type==="MultiPolygon"?f.geometry.coordinates:[f.geometry.coordinates];cl.forEach(function(pc){
+async function lg(cities){var r=await fetch("assets/hunan.json");var geo=await r.json();geo.features.forEach(function(f){var nm=f.properties.name;var ci=cityMap[nm];
+
+if(!ci){
+    ci={
+        id:f.properties.adcode,
+        name:nm,
+        center:f.properties.center
+    };
+}var cl=f.geometry.type==="MultiPolygon"?f.geometry.coordinates:[f.geometry.coordinates];cl.forEach(function(pc){
 
 var paths=[];
 
@@ -215,12 +220,78 @@ paths.push(onePath);
 
 });
 
-var poly=new AMap.Polygon({path:paths,fillColor:"rgba(12,20,40,0.6)",fillOpacity:0.7,strokeColor:"rgba(0,212,255,0.25)",strokeWeight:1.5,strokeOpacity:0.5,extData:{name:nm,adcode:ci.id}});poly.on("click",function(e){var d=e.target.getExtData();sel(d.adcode,d.name);if(map.getZoom()<10)map.setZoom(9);map.setCenter(ci.center||[111.8,27.5])});poly.on("mouseover",function(e){e.target.setOptions({strokeColor:"#00d4ff",strokeWeight:2.5,strokeOpacity:1});map.setCursor("pointer")});poly.on("mouseout",function(e){e.target.setOptions({strokeColor:"rgba(0,212,255,0.25)",strokeWeight:1.5,strokeOpacity:0.5});map.setCursor("")});map.add(poly);polygons.push(poly)})});cp(cities,curRange)}
+var poly=new AMap.Polygon({path:paths,fillColor:"rgba(12,20,40,0.6)",fillOpacity:0.7,strokeColor:"rgba(0,212,255,0.25)",strokeWeight:1.5,strokeOpacity:0.5,extData:{
+    name:nm,
+    adcode:String(ci.id),
+    center:ci.center
+}});poly.on("click",function(e){
+
+var d=e.target.getExtData();
+
+curArea=d.adcode;
+
+curPoint=null;
+
+document.getElementById("photoCard").style.display="none";
+
+
+document.getElementById("currentArea").textContent=
+"当前查看："+d.name;
+
+
+if(d.center){
+
+map.setZoomAndCenter(
+10,
+[
+d.center[0],
+d.center[1]
+]
+);
+
+}
+
+
+ls(String(d.adcode),curRange);
+
+lp(curRange);
+
+
+});poly.on("mouseover",function(e){e.target.setOptions({strokeColor:"#00d4ff",strokeWeight:2.5,strokeOpacity:1});map.setCursor("pointer")});poly.on("mouseout",function(e){e.target.setOptions({strokeColor:"rgba(0,212,255,0.25)",strokeWeight:1.5,strokeOpacity:0.5});map.setCursor("")});map.add(poly);polygons.push(poly)})});cp(cities,curRange)}
 async function cp(cities,range){var rm={},mx=0;for(var i=0;i<cities.length;i++){try{var r=await fetch(BACKEND_URL+"/api/stats/region/"+cities[i].id+"?range="+range);var j=await r.json();var rt=j.code===0?j.data.rate:0;rm[cities[i].name]=rt;if(rt>mx)mx=rt}catch(e){rm[cities[i].name]=0}}mx=Math.max(mx*1.1,10);polygons.forEach(function(p){p.setOptions({fillColor:gc(Math.min((rm[p.getExtData().name]||0)/mx,1)),fillOpacity:0.6})})}
 async function lp(range){try{if(markers.length){markers.forEach(function(m){map.remove(m)});markers=[]}var r=await fetch(BACKEND_URL+"/api/reports?range="+range+"&limit=900");var j=await r.json();if(j.code!==0)return;j.data.forEach(function(p){if(!p.lng||!p.lat)return;var col=p.isInfested?"#ff2d78":"rgba(0,212,255,0.5)";var sh=p.isInfested?"box-shadow:0 0 6px rgba(255,45,120,0.6)":"";var mk=new AMap.Marker({position:[p.lng,p.lat],offset:new AMap.Pixel(-4,-4),zIndex:p.isInfested?120:110,content:'<div style="background:'+col+';'+sh+';width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,0.3);cursor:pointer"></div>',extData:p});mk.on("click",function(e){var d=e.target.getExtData();curPoint=d;map.setZoom(14);map.setCenter([d.lng,d.lat]);document.getElementById("currentArea").textContent="";document.getElementById("photoCard").style.display="block";document.getElementById("photoLabel").textContent=(d.timestamp?new Date(d.timestamp).toLocaleString("zh-CN"):"")+" | "+(d.isInfested?"有虫害":"无虫害");if(d.lat&&d.lng){document.getElementById("infoLng").textContent=d.lng.toFixed(4);document.getElementById("infoLat").textContent=d.lat.toFixed(4)}if(d.temperature!=null)document.getElementById("infoTemp").textContent=d.temperature;if(d.humidity!=null)document.getElementById("infoHum").textContent=d.humidity});map.add(mk);markers.push(mk)})}catch(e){}}
 async function ls(aid,range){try{var r=await fetch(BACKEND_URL+"/api/stats/region/"+aid+"?range="+range);var j=await r.json();if(j.code!==0)return;var d=j.data;document.getElementById("kpiRate").textContent=d.rate.toFixed(1);document.getElementById("kpiTotal").textContent=d.total;document.getElementById("infoTemp").textContent=d.avgTemperature!=null?d.avgTemperature:"--";document.getElementById("infoHum").textContent=d.avgHumidity!=null?d.avgHumidity:"--";if(SC&&d.speciesDistribution){SC.setOption({tooltip:{trigger:"item",formatter:function(p){return p.name+"<br/>"+p.value+"条"}},series:[{type:"pie",radius:["30%","58%"],center:["50%","50%"],itemStyle:{borderRadius:4,borderColor:"rgba(6,14,36,0.9)",borderWidth:2},label:{show:true,formatter:function(p){return p.name},color:"rgba(140,170,210,0.7)",fontSize:17},labelLine:{lineStyle:{color:"rgba(140,170,210,0.15)"}},data:d.speciesDistribution.map(function(s){return{value:s.count,name:s.name,itemStyle:{color:PC[s.species]||"#00d4ff"}}})}]},true)}if(SeC&&d.severityDistribution){var sm={};SEV.forEach(function(s){sm[s]=0});d.severityDistribution.forEach(function(s){sm[s.level]=s.count});SeC.setOption({tooltip:{trigger:"axis",axisPointer:{type:"shadow"}},grid:{left:"14%",right:"8%",top:"8%",bottom:"16%"},xAxis:{type:"category",data:SEV,axisLabel:{color:"rgba(140,170,210,0.5)",fontSize:18},axisLine:{show:false}},yAxis:{type:"value",axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:17},splitLine:{lineStyle:{color:"rgba(140,170,210,0.06)"}}},series:[{type:"bar",barWidth:"50%",data:SEV.map(function(l,i){return{value:sm[l]||0,itemStyle:{color:SEV_C[i],borderRadius:[5,5,0,0]}}})}]},true)}if(TC&&d.trend&&d.trend.length){TC.setOption({tooltip:{trigger:"axis"},grid:{left:"10%",right:"8%",top:"10%",bottom:"24%"},xAxis:{type:"category",data:d.trend.map(function(x){return x.date.slice(5)}),axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:17},axisLine:{show:false}},yAxis:{type:"value",axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:17},splitLine:{lineStyle:{color:"rgba(140,170,210,0.06)"}}},series:[{type:"bar",barWidth:"50%",itemStyle:{borderRadius:[4,4,0,0],color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(0,212,255,0.7)"},{offset:1,color:"rgba(0,212,255,0.15)"}]}},data:d.trend.map(function(x){return x.total})}]},true)}if(typeof updateNewCharts==="function")try{updateNewCharts(d,range)}catch(e){}
 document.getElementById("infoLng").textContent="--";document.getElementById("infoLat").textContent="--"}catch(e){}}
-function sel(id,name){curArea=id;curPoint=null;document.getElementById("photoCard").style.display="none";if(name){document.getElementById("currentArea").textContent="当前查看："+name;if(cityMap[name]&&cityMap[name].center){var c=cityMap[name].center;document.getElementById("infoLng").textContent=c[0].toFixed(4);document.getElementById("infoLat").textContent=c[1].toFixed(4)}}else{document.getElementById("currentArea").textContent="当前查看：湖南省";document.getElementById("infoLng").textContent="--";document.getElementById("infoLat").textContent="--"}ls(curArea,curRange);lp(curRange)}
+function sel(id,name){
+
+curArea=String(id);
+
+curPoint=null;
+
+
+document.getElementById("photoCard").style.display="none";
+
+
+if(name){
+
+document.getElementById("currentArea").textContent=
+"当前查看："+name;
+
+}else{
+
+curArea="all";
+
+document.getElementById("currentArea").textContent=
+"当前查看：湖南省";
+
+}
+
+
+ls(curArea,curRange);
+
+lp(curRange);
+
+}
 document.getElementById("currentArea").addEventListener("click",function(){sel("all","")});
 document.getElementById("photoClose").addEventListener("click",function(){document.getElementById("photoCard").style.display="none";curPoint=null});document.querySelectorAll("#timeGroup .pill").forEach(function(b){b.addEventListener("click",function(){document.querySelectorAll("#timeGroup .pill").forEach(function(x){x.classList.remove("active")});this.classList.add("active");curRange=this.dataset.range;var c=cityOrder.map(function(n){return cityMap[n]});cp(c,curRange);lp(curRange);ls(curArea,curRange)})});
 if(typeof AMap!=="undefined"){init()}else{window.onload=init}
