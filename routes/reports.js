@@ -2,6 +2,41 @@
 const router = express.Router();
 const PestReport = require('../models/PestReport');
 const { fetchWeather } = require('../utils/weather');
+// 虫害ID转中文名称
+function getPestName(id){
+
+  const map = {
+
+    bollworm:"棉铃虫",
+
+    spider_mite:"棉叶螨",
+
+    aphid:"棉蚜",
+
+    lygus:"盲蝽",
+
+    whitefly:"白粉虱",
+
+    leafhopper:"棉叶蝉",
+
+    noctuid:"夜蛾",
+
+    thrips:"棉蓟马",
+
+    leafminer:"潜斑蝇",
+
+    fusarium_wilt:"枯萎病",
+
+    verticillium_wilt:"黄萎病",
+
+    none:"健康"
+
+  };
+
+
+  return map[id] || id;
+
+}
 
 /**
  * POST /api/reports/submit
@@ -106,7 +141,7 @@ router.get("/", async (req, res, next) => {
         humidity: r.weather ? r.weather.humidity : null,
         condition: r.weather ? r.weather.condition : null,
         isInfested: r.pestInfo ? r.pestInfo.isInfested : false,
-        species: r.pestInfo ? r.pestInfo.species : null,
+        species: r.pestInfo ? getPestName(r.pestInfo.species) : null,
         severity: r.pestInfo ? r.pestInfo.severity : null,
         imageUrl: r.imageUrl || ""
       }))
