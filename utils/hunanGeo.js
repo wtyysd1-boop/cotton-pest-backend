@@ -6,8 +6,8 @@ let hunanGeo = null;
 function loadGeo() {
   if (hunanGeo) return hunanGeo;
   const candidates = [
-    path.join(__dirname, '..', 'frontend', 'assets', 'hunan.json'),
-    path.join(__dirname, '..', 'frontend', 'hunan.json'),
+    path.join(__dirname, '..', '..', 'frontend', 'assets', 'hunan.json'),
+    path.join(__dirname, '..', '..', 'frontend', 'hunan.json'),
     path.join(__dirname, 'assets', 'hunan.json'),
     path.join(__dirname, '..', 'assets', 'hunan.json')
   ];
