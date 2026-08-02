@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -11,6 +12,7 @@ const errorHandler = require('./middleware/errorHandler');
 const areasRouter = require('./routes/areas');
 const reportsRouter = require('./routes/reports');
 const statsRouter = require('./routes/stats');
+const uploadRouter = require('./routes/upload');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,18 +44,14 @@ if (process.env.NODE_ENV !== 'production') {
 app.use('/api/areas', areasRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/stats', statsRouter);
+app.use('/api/upload', uploadRouter);
 
-// ── 静态文件（前端页面） ──
-const siblingFrontend = path.join(__dirname, '..', 'frontend');
-const frontendPath = fs.existsSync(siblingFrontend) ? siblingFrontend : path.join(__dirname, 'frontend');
-app.use(express.static(frontendPath));
+// 健康检查（用于部署监控/保活）
+app.get('/api/health', (req, res) => {
+  res.json({ code: 0, message: 'ok', data: { uptime: process.uptime() } });
+});
 
-// 上传图片静态目录
-const uploadsPath = path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(uploadsPath));
 // ── 图片上传接口 ──
-const crypto = require('crypto');
-
 function parseMultipart(buffer, boundary) {
   const delimiter = Buffer.from('--' + boundary);
   const results = [];
@@ -106,6 +104,16 @@ app.post('/upload/image', express.raw({ type: 'multipart/form-data', limit: '20m
     next(err);
   }
 });
+
+// ── 静态文件（前端页面） ──
+const siblingFrontend = path.join(__dirname, '..', 'frontend');
+const frontendPath = fs.existsSync(siblingFrontend) ? siblingFrontend : path.join(__dirname, 'frontend');
+app.use(express.static(frontendPath));
+
+// 上传图片静态目录
+const uploadsPath = path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+
 // 前端入口：自动返回 index.html
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
