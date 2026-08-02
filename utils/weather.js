@@ -25,7 +25,7 @@ async function fetchWeather(lng, lat) {
 
   try {
     // 和风天气实时天气 API v7
-    const host = process.env.QWEATHER_HOST || "api.qweather.com";
+    const host = "api.qweather.com";
     const url = "https://" + host + "/v7/weather/now"
     const resp = await axios.get(url, {
       params: {
