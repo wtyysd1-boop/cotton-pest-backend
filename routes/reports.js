@@ -1,42 +1,24 @@
-const { checkHunanCity } = require('../utils/hunanGeo');
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const PestReport = require('../models/PestReport');
+const ExpertReport = require('../models/ExpertReport');
 const { fetchWeather } = require('../utils/weather');
-// 虫害ID转中文名称
-function getPestName(id){
+const requireApiKey = require('../middleware/requireApiKey');
+const rateLimit = require('../middleware/rateLimit');
+const { checkHunanCity } = require('../utils/hunanGeo');
 
-  const map = {
+const ALLOWED_SPECIES = [
+  'bollworm', 'spider_mite', 'aphid', 'lygus', 'whitefly',
+  'noctuid', 'leafhopper', 'thrips', 'leafminer',
+  'fusarium_wilt', 'verticillium_wilt', 'none'
+];
+const SEVERITY_LEVELS = ['轻', '中', '重', '特重', '无'];
 
-    bollworm:"棉铃虫",
-
-    spider_mite:"棉叶螨",
-
-    aphid:"棉蚜",
-
-    lygus:"盲蝽",
-
-    whitefly:"白粉虱",
-
-    leafhopper:"棉叶蝉",
-
-    noctuid:"夜蛾",
-
-    thrips:"棉蓟马",
-
-    leafminer:"潜斑蝇",
-
-    fusarium_wilt:"枯萎病",
-
-    verticillium_wilt:"黄萎病",
-
-    none:"健康"
-
-  };
-
-
-  return map[id] || id;
-
+function normalizeImageUrl(value) {
+  const text = String(value || '').trim();
+  if (text.length === 0 || text.length > 2000) return '';
+  if (!/^https?:\/\/.+/i.test(text)) return '';
+  return text;
 }
 
 /**
@@ -57,51 +39,72 @@ function getPestName(id){
  *   "imageUrl": "https://..."                          // 可选
  * }
  */
-router.post('/submit', async (req, res, next) => {
+router.post('/submit', rateLimit({ max: 20 }), requireApiKey, async (req, res, next) => {
   try {
     const { areaId, location, timestamp, pestInfo, imageUrl } = req.body;
 
     // 参数校验
-    if (!areaId) {
-      return res.status(400).json({ code: 400, message: '缺少 areaId' });
-    }
     if (!location || !location.coordinates || location.coordinates.length !== 2) {
       return res.status(400).json({ code: 400, message: '缺少有效的 location.coordinates [经度, 纬度]' });
     }
-    if (!pestInfo || pestInfo.isInfested === undefined) {
-      return res.status(400).json({ code: 400, message: '缺少 pestInfo.isInfested' });
+    const lng = Number(location.coordinates[0]);
+    const lat = Number(location.coordinates[1]);
+    if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+      return res.status(400).json({ code: 400, message: '经纬度超出有效范围' });
     }
-
-    // 根据坐标自动获取天气数据（如失败则降级为 null/未知）
-    const [lng, lat] = location.coordinates;
-
     // 经纬度必须属于湖南省，否则不纳入统计
     const cityInfo = checkHunanCity(lng, lat);
     if (!cityInfo) {
       return res.status(400).json({ code: 400, message: '该点不属于湖南省，不纳入统计' });
     }
+    const areaIdNum = Number(cityInfo.adcode);
+    if (!pestInfo || (pestInfo.isInfested !== true && pestInfo.isInfested !== false)) {
+      return res.status(400).json({ code: 400, message: 'pestInfo.isInfested 必须是布尔值' });
+    }
+    const isInfested = pestInfo.isInfested;
+    const species = ALLOWED_SPECIES.includes(pestInfo.species)
+      ? pestInfo.species
+      : (isInfested ? null : 'none');
+    if (isInfested && !species) {
+      return res.status(400).json({ code: 400, message: '有虫害时必须提供合法 species' });
+    }
+    const severity = SEVERITY_LEVELS.includes(pestInfo.severity)
+      ? pestInfo.severity
+      : (isInfested ? '中' : '无');
+    let confidence = pestInfo.confidence == null ? null : Number(pestInfo.confidence);
+    if (confidence !== null && (!Number.isFinite(confidence) || confidence < 0 || confidence > 1)) {
+      return res.status(400).json({ code: 400, message: 'confidence 必须是 0 到 1 之间的数字' });
+    }
+    let parsedTimestamp = new Date();
+    if (timestamp) {
+      parsedTimestamp = new Date(timestamp);
+      if (isNaN(parsedTimestamp.getTime())) {
+        return res.status(400).json({ code: 400, message: 'timestamp 格式不正确' });
+      }
+    }
 
+    // 根据坐标自动获取天气数据（如失败则降级为 null/未知）
     const weather = await fetchWeather(lng, lat);
 
     const report = new PestReport({
-      areaId,
+      areaId: areaIdNum,
       location: {
         type: 'Point',
         coordinates: [lng, lat]
       },
-      timestamp: timestamp ? new Date(timestamp) : new Date(),
+      timestamp: parsedTimestamp,
       weather: {
         temperature: weather.temperature,
         humidity: weather.humidity,
         condition: weather.condition
       },
       pestInfo: {
-        isInfested: pestInfo.isInfested,
-        species: pestInfo.species || 'none',
-        severity: pestInfo.severity || '无',
-        confidence: pestInfo.confidence || null
+        isInfested,
+        species,
+        severity,
+        confidence
       },
-      imageUrl: imageUrl || '',
+      imageUrl: normalizeImageUrl(imageUrl),
       processingStatus: 'completed'
     });
 
@@ -126,17 +129,22 @@ router.get("/", async (req, res, next) => {
   try {
     const { range, limit, areaId } = req.query;
     const query = {};
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 500, 1), 1000);
     if (range) {
       const days = { "1d": 1, "3d": 3, "7d": 7 }[range] || 7;
       query.timestamp = { $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) };
     }
     if (areaId && areaId !== "all") {
-      query.areaId = parseInt(areaId, 10);
+      const parsedAreaId = parseInt(areaId, 10);
+      if (isNaN(parsedAreaId)) {
+        return res.status(400).json({ code: 400, message: 'areaId 格式不正确' });
+      }
+      query.areaId = parsedAreaId;
     }
     const reports = await PestReport.find(query)
       .select("areaId location.coordinates timestamp weather pestInfo.isInfested pestInfo.species pestInfo.severity imageUrl")
       .sort({ timestamp: -1 })
-      .limit(parseInt(limit) || 500);
+      .limit(safeLimit);
     res.json({
       code: 0,
       data: reports.map(r => ({
@@ -149,7 +157,7 @@ router.get("/", async (req, res, next) => {
         humidity: r.weather ? r.weather.humidity : null,
         condition: r.weather ? r.weather.condition : null,
         isInfested: r.pestInfo ? r.pestInfo.isInfested : false,
-        species: r.pestInfo ? getPestName(r.pestInfo.species) : null,
+        species: r.pestInfo ? r.pestInfo.species : null,
         severity: r.pestInfo ? r.pestInfo.severity : null,
         imageUrl: r.imageUrl || ""
       }))
@@ -162,21 +170,8 @@ router.get("/", async (req, res, next) => {
 
 // ── 小程序整合：病虫害中文名 → 内部ID 映射 ──
 
-// 从 Open-Meteo 获取真实天气（免费、无需Key）
-async function genWeather(lng,lat){
-  try{
-    var u="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lng+"&current=temperature_2m,relative_humidity_2m,weather_code";
-    var d=await new Promise(function(r,j){require("https").get(u,function(res){var b="";res.on("data",function(c){b+=c});res.on("end",function(){r(b)})}).on("error",function(e){j(e)})});
-    var j=JSON.parse(d);
-    if(j&&j.current){
-      var wcd={0:"晴",1:"晴",2:"多云",3:"阴",45:"雾",48:"雾",51:"小雨",53:"中雨",55:"大雨",61:"小雨",63:"中雨",65:"大雨",80:"阵雨",81:"中雨",82:"大雨",95:"雷暴"};
-      return{temperature:j.current.temperature_2m,humidity:j.current.relative_humidity_2m,condition:wcd[j.current.weather_code]||"未知"};
-    }
-  }catch(e){}
-  var bt=26+Math.random()*8;
-  return{temperature:parseFloat(bt.toFixed(1)),humidity:Math.round(45+Math.random()*40),condition:["晴","多云","阴","小雨"][Math.floor(Math.random()*4)]};
-}
 const PEST_MAP = {
+  "棉铃虫": { id: "bollworm", name: "棉铃虫", infested: true },
   "棉叶螨": { id: "spider_mite", name: "红蜘蛛", infested: true },
   "棉蚜": { id: "aphid", name: "蚜虫", infested: true },
   "盲蝽": { id: "lygus", name: "盲蝽象", infested: true },
@@ -224,29 +219,44 @@ function findNearestCity(lng, lat) {
  * POST /api/reports/miniapp
  * 接收小程序识别结果，转换为 PestReport 格式存入 MongoDB
  */
-router.post('/miniapp', async (req, res, next) => {
-
-  console.log("收到小程序数据:");
-  console.log(req.body);
-
+router.post('/miniapp', rateLimit({ max: 60 }), requireApiKey, async (req, res, next) => {
   try {
     const { results, photo, location, time } = req.body;
-    if (!results || !Array.isArray(results) || results.length === 0) {
+    if (!Array.isArray(results) || results.length === 0) {
+      return res.status(400).json({ code: 400, message: '缺少识别结果' });
+    }
+    const cleanResults = results
+      .filter(item => item && (item.clz || item.class))
+      .map(item => ({
+        clz: String(item.clz || item.class),
+        prob: parseFloat(item.prob) || 0
+      }));
+    if (cleanResults.length === 0) {
       return res.status(400).json({ code: 400, message: '缺少识别结果' });
     }
     // 取置信度最高的结果
-    const top = results.reduce((a, b) => (parseFloat(a.prob) > parseFloat(b.prob) ? a : b));
+    const top = cleanResults.reduce((a, b) => (a.prob > b.prob ? a : b));
     const pest = PEST_MAP[top.clz] || { id: 'none', name: top.clz || '未知', infested: false };
-    const lng = location && location.lng ? parseFloat(location.lng) : 112.94;
-    const lat = location && location.lat ? parseFloat(location.lat) : 28.23;
+    let lng = 112.94;
+    let lat = 28.23;
+    if (location && (location.lng != null || location.lat != null)) {
+      lng = Number(location.lng);
+      lat = Number(location.lat);
+      if (!Number.isFinite(lng) || !Number.isFinite(lat) || lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+        return res.status(400).json({ code: 400, message: '经纬度超出有效范围' });
+      }
+    }
     const cityInfo = checkHunanCity(lng, lat);
     if (!cityInfo) {
       return res.status(400).json({ code: 400, message: '该点不属于湖南省，不纳入统计' });
     }
     const areaId = Number(cityInfo.adcode);
     const timestamp = time ? new Date(time) : new Date();
+    if (isNaN(timestamp.getTime())) {
+      return res.status(400).json({ code: 400, message: 'time 格式不正确' });
+    }
     const prob = parseFloat(top.prob) || 0;
-    const confidence = prob > 1 ? prob / 100 : prob; // 小程序返回 0-100
+    const confidence = Math.min(Math.max(prob > 1 ? prob / 100 : prob, 0), 1); // 小程序返回 0-100
 
     const report = new PestReport({
       areaId,
@@ -256,24 +266,50 @@ router.post('/miniapp', async (req, res, next) => {
         isInfested: pest.infested,
         species: pest.id,
         severity: pest.infested ? '中' : '无',
-        confidence: Math.min(confidence, 1)
+        confidence
       },
-      imageUrl: photo || '',
+      imageUrl: normalizeImageUrl(photo),
       processingStatus: 'completed'
     });
-    var weather = await genWeather(lng, lat);
-    report.weather = weather;
-    const savedReport = await report.save();
-
-console.log("MongoDB保存成功:", savedReport._id.toString());
-
-res.json({
-  code: 0,
-  message: '导入成功',
-  data: {
-    id: savedReport._id.toString()
+    report.weather = await fetchWeather(lng, lat);
+    const saved = await report.save();
+    res.json({ code: 0, message: '导入成功', data: { id: saved._id.toString() } });
+  } catch (err) {
+    console.error("miniapp同步错误:", err);
+    res.status(500).json({
+      code: 500,
+      message: err.message || "服务器内部错误"
+    });
   }
 });
+
+/**
+ * POST /api/reports/expert
+ * 接收小程序专家鉴定表单
+ */
+router.post('/expert', rateLimit({ max: 10, message: '专家鉴定提交过于频繁' }), requireApiKey, async (req, res, next) => {
+  try {
+    const { name, expert, contact, photo } = req.body || {};
+    const pestName = String(name || '').trim();
+    const expertName = String(expert || '').trim();
+    const contactInfo = String(contact || '').trim();
+
+    if (!pestName || !expertName || !contactInfo) {
+      return res.status(400).json({ code: 400, message: '请填写病虫害名称、专家姓名和联系方式' });
+    }
+
+    const saved = await ExpertReport.create({
+      pestName: pestName.slice(0, 100),
+      expertName: expertName.slice(0, 50),
+      contact: contactInfo.slice(0, 100),
+      imageUrl: normalizeImageUrl(photo)
+    });
+
+    res.status(201).json({
+      code: 0,
+      message: '提交成功',
+      data: { id: saved._id.toString() }
+    });
   } catch (err) {
     next(err);
   }
