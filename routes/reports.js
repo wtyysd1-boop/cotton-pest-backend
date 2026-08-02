@@ -74,6 +74,13 @@ router.post('/submit', async (req, res, next) => {
 
     // 根据坐标自动获取天气数据（如失败则降级为 null/未知）
     const [lng, lat] = location.coordinates;
+
+    // 经纬度必须属于湖南省，否则不纳入统计
+    const cityInfo = checkHunanCity(lng, lat);
+    if (!cityInfo) {
+      return res.status(400).json({ code: 400, message: '该点不属于湖南省，不纳入统计' });
+    }
+
     const weather = await fetchWeather(lng, lat);
 
     const report = new PestReport({
@@ -232,7 +239,11 @@ router.post('/miniapp', async (req, res, next) => {
     const pest = PEST_MAP[top.clz] || { id: 'none', name: top.clz || '未知', infested: false };
     const lng = location && location.lng ? parseFloat(location.lng) : 112.94;
     const lat = location && location.lat ? parseFloat(location.lat) : 28.23;
-    const areaId = findNearestCity(lng, lat);
+    const cityInfo = checkHunanCity(lng, lat);
+    if (!cityInfo) {
+      return res.status(400).json({ code: 400, message: '该点不属于湖南省，不纳入统计' });
+    }
+    const areaId = Number(cityInfo.adcode);
     const timestamp = time ? new Date(time) : new Date();
     const prob = parseFloat(top.prob) || 0;
     const confidence = prob > 1 ? prob / 100 : prob; // 小程序返回 0-100
