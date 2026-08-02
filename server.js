@@ -51,7 +51,61 @@ app.use(express.static(frontendPath));
 // 上传图片静态目录
 const uploadsPath = path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(uploadsPath));
+// ── 图片上传接口 ──
+const crypto = require('crypto');
 
+function parseMultipart(buffer, boundary) {
+  const delimiter = Buffer.from('--' + boundary);
+  const results = [];
+  let pos = 0;
+  for (;;) {
+    const start = buffer.indexOf(delimiter, pos);
+    if (start === -1) break;
+    const lineEnd = buffer.indexOf(Buffer.from('\r\n'), start + delimiter.length);
+    if (lineEnd === -1) break;
+    const partStart = lineEnd + 2;
+    const next = buffer.indexOf(delimiter, partStart);
+    if (next === -1) break;
+    let partEnd = next;
+    if (buffer[partEnd - 2] === 13 && buffer[partEnd - 1] === 10) partEnd -= 2;
+    const block = buffer.slice(partStart, partEnd);
+    const sep = block.indexOf(Buffer.from('\r\n\r\n'));
+    if (sep === -1) { pos = next + delimiter.length; continue; }
+    const headers = block.slice(0, sep).toString('utf8');
+    const data = block.slice(sep + 4);
+    const nameMatch = /name="([^"]*)"/.exec(headers);
+    const fileMatch = /filename="([^"]*)"/.exec(headers);
+    if (nameMatch && nameMatch[1] === 'file' && fileMatch) {
+      results.push({ filename: fileMatch[1], data });
+    }
+    pos = next + delimiter.length;
+  }
+  return results;
+}
+
+app.post('/upload/image', express.raw({ type: 'multipart/form-data', limit: '20mb' }), (req, res, next) => {
+  try {
+    const ct = req.headers['content-type'] || '';
+    const bm = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(ct);
+    if (!bm) return res.status(400).json({ code: 400, message: '缺少 multipart boundary' });
+    const boundary = bm[1] || bm[2];
+    const files = parseMultipart(req.body, boundary);
+    if (!files.length) return res.status(400).json({ code: 400, message: '没有收到文件' });
+    const f = files[0];
+    const extMatch = /\.([a-zA-Z0-9]+)$/.exec(f.filename);
+    const ext = extMatch ? extMatch[1] : 'jpg';
+    const filename = crypto.randomUUID() + '.' + ext;
+    const uploadsDir = path.join(__dirname, 'uploads');
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    fs.writeFileSync(path.join(uploadsDir, filename), f.data);
+    res.json({
+      code: 0,
+      url: (process.env.PUBLIC_URL || 'https://cotton-pest-backend.onrender.com') + '/uploads/' + filename
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 // 前端入口：自动返回 index.html
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api')) {
