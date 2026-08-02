@@ -84,7 +84,17 @@ router.post('/submit', rateLimit({ max: 20 }), requireApiKey, async (req, res, n
     }
 
     // 根据坐标自动获取天气数据（如失败则降级为 null/未知）
-    const weather = await fetchWeather(lng, lat);
+    try {
+
+  report.weather = await fetchWeather(lng, lat);
+
+} catch(e) {
+
+  console.log("天气获取失败:", e);
+
+  report.weather = null;
+
+}
 
     const report = new PestReport({
       areaId: areaIdNum,
