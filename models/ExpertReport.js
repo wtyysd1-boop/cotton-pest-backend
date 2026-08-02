@@ -1,41 +1,49 @@
 const mongoose = require('mongoose');
 
-const expertReportSchema = new mongoose.Schema({
-  pestName: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 100,
-    comment: '病虫害名称'
+const ExpertReportSchema = new mongoose.Schema({
+
+  location: {
+    type: {
+      type: String,
+      default: "Point"
+    },
+    coordinates: {
+      type: [Number],
+      default: [0,0]
+    }
   },
-  expertName: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 50,
-    comment: '专家姓名'
+
+  pestInfo: {
+    species: String,
+    confidence: Number,
+    severity: String
   },
-  contact: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 100,
-    comment: '联系方式'
-  },
-  imageUrl: {
-    type: String,
-    default: '',
-    maxlength: 2000,
-    comment: '虫害图片URL'
-  },
+
+  imageUrl: String,
+
+  expertResult: String,
+
   status: {
     type: String,
-    enum: ['pending', 'reviewed'],
-    default: 'pending'
+    default: "pending"
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now
   }
-}, {
-  timestamps: true,
-  collection: 'expertreports'
+
 });
+
+
+ExpertReportSchema.index({
+  location:"2dsphere"
+});
+
+
+module.exports = mongoose.model(
+  "ExpertReport",
+  ExpertReportSchema
+);
 
 module.exports = mongoose.model('ExpertReport', expertReportSchema);
