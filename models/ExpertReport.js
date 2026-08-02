@@ -46,4 +46,4 @@ module.exports = mongoose.model(
   ExpertReportSchema
 );
 
-module.exports = mongoose.model('ExpertReport', expertReportSchema);
+module.exports = mongoose.model('ExpertReport', ExpertReportSchema);
