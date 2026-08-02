@@ -1,25 +1,24 @@
-module.exports = function requireApiKey(req, res, next) {
+const crypto = require('crypto');
 
-  const key = req.headers['x-api-key'];
+// 开发环境默认值，生产环境请务必通过环境变量 API_KEY 覆盖
+const DEFAULT_API_KEY = 'cotton-pest-2026-miniapp-key';
 
-  const correctKey = process.env.API_KEY;
+function safeEqual(a, b) {
+  const bufA = Buffer.from(String(a));
+  const bufB = Buffer.from(String(b));
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
-  if (!correctKey) {
-    return res.status(500).json({
-      code: 500,
-      message: "API_KEY未配置"
-    });
+function requireApiKey(req, res, next) {
+  const expected = process.env.API_KEY || DEFAULT_API_KEY;
+  const provided = req.get('x-api-key');
+
+  if (!provided || !safeEqual(provided, expected)) {
+    return res.status(401).json({ code: 401, message: '缺少或错误的 API Key' });
   }
-
-
-  if (key !== correctKey) {
-    return res.status(401).json({
-      code: 401,
-      message: "API Key错误"
-    });
-  }
-
 
   next();
+}
 
-};
+module.exports = requireApiKey;
