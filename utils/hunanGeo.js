@@ -1,25 +1,24 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-let hunanGeo = null;
+const GEO_PATH = path.join(
+  process.cwd(),
+  "data",
+  "hunan.json"
+);
 
-function loadGeo() {
-  if (hunanGeo) return hunanGeo;
-  const candidates = [
-    path.join(__dirname, '..', '..', 'frontend', 'assets', 'hunan.json'),
-    path.join(__dirname, '..', '..', 'frontend', 'hunan.json'),
-    path.join(__dirname, 'assets', 'hunan.json'),
-    path.join(__dirname, '..', 'assets', 'hunan.json')
-  ];
-  for (const p of candidates) {
-    if (fs.existsSync(p)) {
-      hunanGeo = JSON.parse(fs.readFileSync(p, 'utf-8'));
-      return hunanGeo;
-    }
+
+function loadGeo(){
+
+  if(!fs.existsSync(GEO_PATH)){
+    throw new Error("找不到 hunan.json 边界数据");
   }
-  throw new Error('找不到 hunan.json 边界数据');
-}
 
+  return JSON.parse(
+    fs.readFileSync(GEO_PATH,"utf8")
+  );
+
+}
 function pointInRing(pt, ring) {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
