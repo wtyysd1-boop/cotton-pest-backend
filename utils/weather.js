@@ -4,35 +4,47 @@ const path = require('path');
 
 const LOG_FILE = path.join(__dirname, '..', 'logs', 'weather-errors.log');
 
+
 // 确保日志目录存在
 function ensureLogDir() {
   const dir = path.dirname(LOG_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 }
 
-/**
- * 根据经纬度调用和风天气实时天气 API
- * @param {number} lng - 经度
- * @param {number} lat - 纬度
- * @returns {Promise<{temperature: number|null, humidity: number|null, condition: string}>}
- */
-async function fetchWeather(lng, lat) {
-  const axios = require('axios');
 
+/**
+ * 使用 Open-Meteo 获取实时天气
+ * 免费
+ * 无需 API Key
+ *
+ * @param {number} lng 经度
+ * @param {number} lat 纬度
+ */
 async function fetchWeather(lng, lat) {
 
   try {
 
     const url = "https://api.open-meteo.com/v1/forecast";
 
-    const resp = await axios.get(url,{
-      params:{
-        latitude:lat,
-        longitude:lng,
+
+    const resp = await axios.get(url, {
+
+      params: {
+
+        latitude: lat,
+
+        longitude: lng,
+
         current:
-        "temperature_2m,relative_humidity_2m,weather_code"
+          "temperature_2m,relative_humidity_2m,weather_code"
+
       },
-      timeout:5000
+
+      timeout: 5000
+
     });
 
 
@@ -42,10 +54,12 @@ async function fetchWeather(lng, lat) {
     return {
 
       temperature:
-        now.temperature_2m,
+        now.temperature_2m ?? null,
+
 
       humidity:
-        now.relative_humidity_2m,
+        now.relative_humidity_2m ?? null,
+
 
       condition:
         weatherCodeText(now.weather_code)
@@ -53,18 +67,30 @@ async function fetchWeather(lng, lat) {
     };
 
 
-  } catch(err){
+  } catch (err) {
 
-    console.log(
+
+    console.warn(
       "[Weather] 获取失败:",
       err.message
     );
 
 
+    logError(
+      "lat=" + lat +
+      ", lng=" + lng +
+      ", error=" + err.message
+    );
+
+
     return {
-      temperature:null,
-      humidity:null,
-      condition:"未知"
+
+      temperature: null,
+
+      humidity: null,
+
+      condition: "未知"
+
     };
 
   }
@@ -73,27 +99,63 @@ async function fetchWeather(lng, lat) {
 
 
 
-function weatherCodeText(code){
+/**
+ * Open-Meteo weather_code 转中文
+ */
+function weatherCodeText(code) {
 
-  const map={
 
-    0:"晴",
+  const map = {
 
-    1:"大部晴朗",
 
-    2:"少云",
+    0: "晴",
 
-    3:"阴天",
+    1: "大部晴朗",
 
-    45:"雾",
+    2: "少云",
 
-    51:"小雨",
+    3: "阴天",
 
-    61:"雨",
 
-    71:"雪",
+    45: "雾",
 
-    95:"雷雨"
+    48: "雾凇",
+
+
+    51: "小雨",
+
+    53: "中雨",
+
+    55: "大雨",
+
+
+    61: "小雨",
+
+    63: "中雨",
+
+    65: "大雨",
+
+
+    71: "小雪",
+
+    73: "中雪",
+
+    75: "大雪",
+
+
+    80: "阵雨",
+
+    81: "强阵雨",
+
+    82: "暴雨",
+
+
+    95: "雷雨",
+
+    96: "雷雨伴冰雹",
+
+    99: "雷雨伴冰雹"
+
 
   };
 
@@ -103,73 +165,48 @@ function weatherCodeText(code){
 }
 
 
-module.exports={
- fetchWeather
-};
-  if (!key || key === 'your_qweather_api_key_here') {
-    console.warn('[Weather] QWEATHER_KEY \u672A\u914D\u7F6E\uFF0C\u8DF3\u8FC7\u5929\u6C14\u83B7\u53D6');
-    return { temperature: null, humidity: null, condition: '\u672A\u77E5' };
-  }
-
-  try {
-    // 和风天气实时天气 API v7
-    const host = "api.qweather.com";
-    const url = "https://" + host + "/v7/weather/now"
-    const resp = await axios.get(url, {
-      params: {
-        location: '' + lng + ',' + lat,
-        key: key
-      },
-      timeout: 5000
-    });
-
-    if (resp.data && resp.data.code === '200') {
-      const now = resp.data.now;
-      return {
-        temperature: now.temp ? parseFloat(now.temp) : null,
-        humidity: now.humidity ? parseInt(now.humidity, 10) : null,
-        condition: now.text || '\u672A\u77E5'
-      };
-    }
-
-    // API 返回了非成功 code
-    console.warn('[Weather] API \u8FD4\u56DE\u5F02\u5E38:', resp.data?.code);
-    logError('API code=' + (resp.data?.code || '') + ', response=' + JSON.stringify(resp.data));
-    return { temperature: null, humidity: null, condition: '\u672A\u77E5' };
-
-  } catch (err) {
-    // 超时、限流、网络错误等——降级处理，不让上报接口崩溃
-    console.warn('[Weather] \u83B7\u53D6\u5931\u8D25:', err.message);
-    logError('lat=' + lat + ', lng=' + lng + ', error=' + err.message);
-
-    // 区分不同错误类型以便排查
-    if (err.code === 'ECONNABORTED') {
-      console.warn('[Weather] API \u8BF7\u6C42\u8D85\u65F6');
-    } else if (err.response) {
-      // 记录响应体内容，方便排查 403/401 等权限问题
-      const respBody = typeof err.response.data === 'object'
-        ? JSON.stringify(err.response.data)
-        : String(err.response.data);
-      console.warn('[Weather] HTTP \u72B6\u6001\u7801:', err.response.status, respBody);
-      logError('status=' + err.response.status + ', body=' + respBody);
-    }
-
-    return { temperature: null, humidity: null, condition: '\u672A\u77E5' };
-  }
-}
 
 /**
- * 将天气错误写入日志文件
- * @param {string} message
+ * 写天气错误日志
  */
 function logError(message) {
+
   try {
+
+
     ensureLogDir();
-    const line = '[' + new Date().toISOString() + '] ' + message + '\n';
-    fs.appendFileSync(LOG_FILE, line, 'utf-8');
-  } catch (e) {
-    console.error('[Weather] \u5199\u5165\u65E5\u5FD7\u5931\u8D25:', e.message);
+
+
+    const line =
+      "[" +
+      new Date().toISOString() +
+      "] " +
+      message +
+      "\n";
+
+
+    fs.appendFileSync(
+      LOG_FILE,
+      line,
+      "utf-8"
+    );
+
+
+  } catch(e) {
+
+
+    console.error(
+      "[Weather] 日志写入失败:",
+      e.message
+    );
+
+
   }
+
 }
 
-module.exports = { fetchWeather };
+
+
+module.exports = {
+  fetchWeather
+};
