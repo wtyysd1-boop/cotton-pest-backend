@@ -175,6 +175,10 @@ var SEV_C=["#2ed573","#ff9f43","#ff4757","#ff6b9d"];
 var CS=[{p:0,c:"#0a4b33"},{p:0.25,c:"#2d8a4e"},{p:0.5,c:"#e6a817"},{p:0.75,c:"#d95a11"},{p:1,c:"#b71c1c"}];
 function gc(t){for(var i=1;i<CS.length;i++){var s=CS[i-1],e=CS[i];if(t<=e.p){var f=(t-s.p)/(e.p-s.p);return lc(s.c,e.c,f)}}return CS[CS.length-1].c}
 function lc(a,b,t){function h(x){return parseInt(x,16)};function p(v){var hh=Math.round(v).toString(16);return hh.length===1?"0"+hh:hh};return "#"+p(h(a[1]+a[2])*(1-t)+h(b[1]+b[2])*t)+p(h(a[3]+a[4])*(1-t)+h(b[3]+b[4])*t)+p(h(a[5]+a[6])*(1-t)+h(b[5]+b[6])*t)}
+function loadFocusAreas(){
+try{fetch(BACKEND_URL+"/api/stats/focus-areas").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var el=document.getElementById("top3List");if(!el)return;var list=j.data||[];if(!list.length){el.innerHTML='<div class="top3-item"><span>暂无重点关注区域</span></div>';return}var marks=["①","②","③"];var html="";list.forEach(function(a,i){html+='<div class="top3-item"><span>'+marks[i]+'</span><span>'+a.name+'</span><span>'+a.level+'</span></div>'});el.innerHTML=html}).catch(function(){})}catch(e){}}
+function loadSuggestion(){
+try{fetch(BACKEND_URL+"/api/stats/suggestion").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var el=document.getElementById("recText");if(el&&j.data&&j.data.suggestion)el.textContent=j.data.suggestion}).catch(function(){})}catch(e){}}
 function init(){
 SC=echarts.init(document.getElementById("speciesChart"));
 SeC=echarts.init(document.getElementById("severityChart"));
@@ -193,7 +197,7 @@ window._amap=map;
 AMap.plugin(["AMap.ToolBar"],function(){map.addControl(new AMap.ToolBar({position:"LT"}))});
 map.on("complete",function(){ld().then(function(){document.getElementById("loading").style.display="none"})});
 }
-async function ld(){var r=await fetch(BACKEND_URL+"/api/areas");var j=await r.json();if(j.code!==0)return;var c=j.data;c.forEach(function(x){cityMap[x.name]=x;cityOrder.push(x.name)});await lg(c);await lp(curRange);await ls("all",curRange)}
+async function ld(){var r=await fetch(BACKEND_URL+"/api/areas");var j=await r.json();if(j.code!==0)return;var c=j.data;c.forEach(function(x){cityMap[x.name]=x;cityOrder.push(x.name)});await lg(c);await lp(curRange);await ls("all",curRange);loadFocusAreas();loadSuggestion()}
 async function lg(cities){var r=await fetch("assets/hunan.json");var geo=await r.json();geo.features.forEach(function(f){var nm=f.properties.name;var ci=cityMap[nm];
 
 if(!ci){
