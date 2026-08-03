@@ -261,7 +261,23 @@ router.post('/miniapp', rateLimit({ max: 60 }), requireApiKey, async (req, res, 
       return res.status(400).json({ code: 400, message: '该点不属于湖南省，不纳入统计' });
     }
     const areaId = Number(cityInfo.adcode);
-    const timestamp = time ? new Date(time) : new Date();
+    let timestamp;
+
+if(time){
+
+  // 小程序传的是北京时间
+  timestamp = new Date(
+    time.replace(
+      ' ',
+      'T'
+    ) + '+08:00'
+  );
+
+}else{
+
+  timestamp = new Date();
+
+}
     if (isNaN(timestamp.getTime())) {
       return res.status(400).json({ code: 400, message: 'time 格式不正确' });
     }
