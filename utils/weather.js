@@ -17,7 +17,95 @@ function ensureLogDir() {
  * @returns {Promise<{temperature: number|null, humidity: number|null, condition: string}>}
  */
 async function fetchWeather(lng, lat) {
-  const key = process.env.QWEATHER_KEY;
+  const axios = require('axios');
+
+async function fetchWeather(lng, lat) {
+
+  try {
+
+    const url = "https://api.open-meteo.com/v1/forecast";
+
+    const resp = await axios.get(url,{
+      params:{
+        latitude:lat,
+        longitude:lng,
+        current:
+        "temperature_2m,relative_humidity_2m,weather_code"
+      },
+      timeout:5000
+    });
+
+
+    const now = resp.data.current;
+
+
+    return {
+
+      temperature:
+        now.temperature_2m,
+
+      humidity:
+        now.relative_humidity_2m,
+
+      condition:
+        weatherCodeText(now.weather_code)
+
+    };
+
+
+  } catch(err){
+
+    console.log(
+      "[Weather] 获取失败:",
+      err.message
+    );
+
+
+    return {
+      temperature:null,
+      humidity:null,
+      condition:"未知"
+    };
+
+  }
+
+}
+
+
+
+function weatherCodeText(code){
+
+  const map={
+
+    0:"晴",
+
+    1:"大部晴朗",
+
+    2:"少云",
+
+    3:"阴天",
+
+    45:"雾",
+
+    51:"小雨",
+
+    61:"雨",
+
+    71:"雪",
+
+    95:"雷雨"
+
+  };
+
+
+  return map[code] || "未知";
+
+}
+
+
+module.exports={
+ fetchWeather
+};
   if (!key || key === 'your_qweather_api_key_here') {
     console.warn('[Weather] QWEATHER_KEY \u672A\u914D\u7F6E\uFF0C\u8DF3\u8FC7\u5929\u6C14\u83B7\u53D6');
     return { temperature: null, humidity: null, condition: '\u672A\u77E5' };
