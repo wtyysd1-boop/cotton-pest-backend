@@ -33,7 +33,20 @@ router.get('/region/:areaId', async (req, res, next) => {
         $group: {
           _id: null,
           total: { $sum: 1 },
-          infested: { $sum: { $cond: ['$pestInfo.isInfested', 1, 0] } },
+          infested: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$pestInfo.species', 'none'] },
+                    { $gt: ['$pestInfo.confidence', 0.3] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
           avgTemperature: { $avg: '$weather.temperature' },
           avgHumidity: { $avg: '$weather.humidity' }
         }
@@ -61,7 +74,7 @@ router.get('/region/:areaId', async (req, res, next) => {
 
     // 虫害类型分布
     const speciesPipeline = [
-      { $match: { ...matchStage, 'pestInfo.isInfested': true } },
+      { $match: { ...matchStage, 'pestInfo.species': { $ne: 'none' } } },
       { $group: { _id: '$pestInfo.species', count: { $sum: 1 } } },
       { $project: { _id: 0, species: '$_id', count: 1 } },
       { $sort: { count: -1 } }
@@ -70,7 +83,7 @@ router.get('/region/:areaId', async (req, res, next) => {
 
     // 严重程度分布
     const severityPipeline = [
-      { $match: { ...matchStage, 'pestInfo.isInfested': true } },
+      { $match: { ...matchStage, 'pestInfo.species': { $ne: 'none' } } },
       { $group: { _id: '$pestInfo.severity', count: { $sum: 1 } } },
       { $project: { _id: 0, level: '$_id', count: 1 } },
       { $sort: { level: 1 } }
@@ -84,7 +97,20 @@ router.get('/region/:areaId', async (req, res, next) => {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
           total: { $sum: 1 },
-          infested: { $sum: { $cond: ['$pestInfo.isInfested', 1, 0] } },
+          infested: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$pestInfo.species', 'none'] },
+                    { $gt: ['$pestInfo.confidence', 0.3] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
           avgTemp: { $avg: '$weather.temperature' }
         }
       },
@@ -116,6 +142,7 @@ router.get('/region/:areaId', async (req, res, next) => {
         total: base.total,
         infested: base.infested,
         rate: parseFloat(base.rate.toFixed(2)),
+        riskLevel: base.rate > 50 ? '高风险' : base.rate > 20 ? '中风险' : '低风险',
         avgTemperature: base.avgTemperature,
         avgHumidity: base.avgHumidity,
         speciesDistribution: speciesDist.map(s => ({
