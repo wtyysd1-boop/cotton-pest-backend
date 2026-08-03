@@ -141,7 +141,14 @@ const SPECIES_NAMES = {
   spider_mite: '红蜘蛛',
   aphid: '蚜虫',
   lygus: '盲蝽象',
-  whitefly: '白粉虱'
+  whitefly: '白粉虱',
+  noctuid: '夜蛾',
+  leafhopper: '棉叶蝉',
+  thrips: '棉蓟马',
+  leafminer: '斑潜蝇',
+  fusarium_wilt: '枯萎病',
+  verticillium_wilt: '黄萎病',
+  none: '健康'
 };
 
 /**
