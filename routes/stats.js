@@ -1,6 +1,7 @@
 ﻿const express = require('express');
 const router = express.Router();
 const PestReport = require('../models/PestReport');
+const Area = require('../models/Area');
 
 /**
  * GET /api/stats/region/:areaId?range=1d|3d|7d
@@ -140,14 +141,86 @@ const SPECIES_NAMES = {
   spider_mite: '红蜘蛛',
   aphid: '蚜虫',
   lygus: '盲蝽象',
-  whitefly: '白粉虱',
-  noctuid: '夜蛾',
-  leafhopper: '棉叶蝉',
-  thrips: '棉蓟马',
-  leafminer: '斑潜蝇',
-  fusarium_wilt: '枯萎病',
-  verticillium_wilt: '黄萎病',
-  none: '健康'
+  whitefly: '白粉虱'
 };
+
+/**
+ * GET /api/stats/focus-areas
+ * 最近7天上报数量最多的前3个区域
+ */
+router.get('/focus-areas', async (req, res, next) => {
+  try {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const topAreas = await PestReport.aggregate([
+      { $match: { timestamp: { $gte: since } } },
+      { $group: { _id: '$areaId', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 3 },
+      { $project: { _id: 0, areaId: '$_id', count: 1 } }
+    ]);
+
+    const areaIds = topAreas.map(a => a.areaId);
+    const areas = areaIds.length
+      ? await Area.find({ adcode: { $in: areaIds } }, { name: 1, adcode: 1, _id: 0 })
+      : [];
+    const nameMap = new Map(areas.map(a => [a.adcode, a.name]));
+
+    res.json({
+      code: 0,
+      data: topAreas.map(a => ({
+        areaId: a.areaId,
+        name: nameMap.get(a.areaId) || '区域' + a.areaId,
+        count: a.count,
+        level: a.count >= 10 ? '高风险' : a.count >= 5 ? '中风险' : '低风险'
+      }))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const SPECIES_SUGGESTIONS = {
+  leafhopper: {
+    pest: '棉叶蝉',
+    suggestion: '加强田间巡查，及时清除杂草，可采用吡虫啉等药剂防治。'
+  },
+  noctuid: {
+    pest: '夜蛾',
+    suggestion: '重点监测幼虫发生情况，及时开展药剂防治。'
+  },
+  spider_mite: {
+    pest: '红蜘蛛',
+    suggestion: '加强田间检查，发现叶螨及时防治。'
+  },
+  unknown: {
+    pest: '未知',
+    suggestion: '加强虫情监测，根据发生情况开展综合防治。'
+  }
+};
+
+/**
+ * GET /api/stats/suggestion
+ * 最近7天出现最多的虫害及防治建议
+ */
+router.get('/suggestion', async (req, res, next) => {
+  try {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const topSpecies = await PestReport.aggregate([
+      { $match: { timestamp: { $gte: since } } },
+      { $group: { _id: '$pestInfo.species', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
+    ]);
+
+    const species = topSpecies.length ? topSpecies[0]._id : null;
+    const data = SPECIES_SUGGESTIONS[species] || SPECIES_SUGGESTIONS.unknown;
+
+    res.json({ code: 0, data });
+  } catch (err) {
+    next(err);
+  }
+});
 
 module.exports = router;
