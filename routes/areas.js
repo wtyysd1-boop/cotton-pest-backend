@@ -34,8 +34,14 @@ router.get('/', async (req, res, next) => {
     res.json({
       code: 0,
       data: areas.map(a => ({
-        id: a.adcode.toString(),
-        name: HUNAN_AREA_NAMES[Number(a.adcode)] || a.name || a.adcode.toString(),
+        id: String(a.adcode),
+
+        name:
+          HUNAN_AREA_NAMES[String(a.adcode)] ||
+          HUNAN_AREA_NAMES[Number(a.adcode)] ||
+          a.name ||
+          String(a.adcode),
+
         center: a.center.coordinates
       }))
     });
