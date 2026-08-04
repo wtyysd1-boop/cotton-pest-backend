@@ -339,33 +339,145 @@ const SPECIES_NAMES = {
 
 /**
  * GET /api/stats/focus-areas
- * 最近7天上报数量最多的前3个区域
+ * 最近7天按综合风险评分排序的前3个重点关注区域
  */
 router.get('/focus-areas', async (req, res, next) => {
   try {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const matchStage = { timestamp: { $gte: since } };
+    const infestedCond = {
+      $and: [
+        { $ne: ['$pestInfo.species', 'none'] },
+        { $gt: ['$pestInfo.confidence', 0.3] }
+      ]
+    };
 
-    const topAreas = await PestReport.aggregate([
-      { $match: { timestamp: { $gte: since } } },
-      { $group: { _id: '$areaId', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 3 },
-      { $project: { _id: 0, areaId: '$_id', count: 1 } }
+    const [baseStats, speciesList, trendList] = await Promise.all([
+      PestReport.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: '$areaId',
+            total: { $sum: 1 },
+            infested: { $sum: { $cond: [infestedCond, 1, 0] } },
+            avgTemperature: { $avg: '$weather.temperature' },
+            avgHumidity: { $avg: '$weather.humidity' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            areaId: '$_id',
+            total: 1,
+            infested: 1,
+            rate: {
+              $cond: [
+                { $gt: ['$total', 0] },
+                { $multiply: [{ $divide: ['$infested', '$total'] }, 100] },
+                0
+              ]
+            },
+            avgTemperature: { $round: ['$avgTemperature', 1] },
+            avgHumidity: { $round: ['$avgHumidity', 0] }
+          }
+        }
+      ]),
+      PestReport.aggregate([
+        { $match: { ...matchStage, 'pestInfo.species': { $ne: 'none' }, 'pestInfo.confidence': { $gt: 0.3 } } },
+        { $group: { _id: { areaId: '$areaId', species: '$pestInfo.species' }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        {
+          $project: {
+            _id: 0,
+            areaId: '$_id.areaId',
+            species: '$_id.species',
+            count: 1
+          }
+        }
+      ]),
+      PestReport.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: {
+              areaId: '$areaId',
+              day: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } }
+            },
+            total: { $sum: 1 },
+            infested: { $sum: { $cond: [infestedCond, 1, 0] } }
+          }
+        },
+        { $sort: { '_id.day': 1 } },
+        {
+          $project: {
+            _id: 0,
+            areaId: '$_id.areaId',
+            date: '$_id.day',
+            total: 1,
+            infested: 1
+          }
+        }
+      ])
     ]);
 
-    const areaIds = topAreas.map(a => a.areaId);
+    const speciesByArea = new Map();
+    speciesList.forEach(item => {
+      if (!speciesByArea.has(item.areaId)) {
+        speciesByArea.set(item.areaId, []);
+      }
+      speciesByArea.get(item.areaId).push({ species: item.species, count: item.count });
+    });
+
+    const trendByArea = new Map();
+    trendList.forEach(item => {
+      if (!trendByArea.has(item.areaId)) {
+        trendByArea.set(item.areaId, []);
+      }
+      trendByArea.get(item.areaId).push({ date: item.date, infested: item.infested });
+    });
+
+    const topAreas = baseStats
+      .map(item => {
+        const speciesDist = speciesByArea.get(item.areaId) || [];
+        const risk = calculateRiskScore({
+          rate: item.rate,
+          avgTemperature: item.avgTemperature,
+          avgHumidity: item.avgHumidity,
+          trend: trendByArea.get(item.areaId) || [],
+          speciesDistribution: speciesDist
+        });
+
+        let riskLevel = risk.level;
+        if (item.total < 3 && (riskLevel === '高风险' || riskLevel === '极高风险')) {
+          riskLevel = '疑似高风险';
+        }
+
+        return {
+          areaId: String(item.areaId),
+          reportCount: item.total,
+          count: item.total,
+          riskScore: risk.score,
+          riskLevel,
+          mainSpecies: speciesDist.length
+            ? (SPECIES_NAMES[speciesDist[0].species] || speciesDist[0].species)
+            : '健康',
+          reasons: risk.reasons
+        };
+      })
+      .sort((a, b) => b.riskScore - a.riskScore || b.reportCount - a.reportCount)
+      .slice(0, 3);
+
+    const areaIds = topAreas.map(a => Number(a.areaId));
     const areas = areaIds.length
-      ? await Area.find({ adcode: { $in: areaIds } }, { name: 1, adcode: 1, _id: 0 })
+      ? await Area.find({ adcode: { $in: areaIds } }, { name: 1, adcode: 1, _id: 0 }).lean()
       : [];
-    const nameMap = new Map(areas.map(a => [a.adcode, a.name]));
+    const nameMap = new Map(areas.map(a => [String(a.adcode), a.name]));
 
     res.json({
       code: 0,
       data: topAreas.map(a => ({
-        areaId: a.areaId,
-        name: nameMap.get(a.areaId) || '区域' + a.areaId,
-        count: a.count,
-        level: a.count >= 10 ? '高风险' : a.count >= 5 ? '中风险' : '低风险'
+        ...a,
+        area: nameMap.get(a.areaId) || '区域' + a.areaId
       }))
     });
   } catch (err) {
