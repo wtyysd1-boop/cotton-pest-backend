@@ -138,6 +138,7 @@ height:600px;
 <div class="panel" style="height:230px"><div class="ptitle">虫害类型分布</div><div class="chart-box"><div id="speciesChart" class="sc"></div></div></div>
 <div class="panel" style="height:230px"><div class="ptitle">危害程度分布</div><div class="chart-box"><div id="severityChart" class="sc"></div></div></div>
 <div class="panel" style="height:170px"><div class="ptitle">上报量趋势</div><div class="chart-box"><div id="trendChart" class="hc"></div></div></div>
+<div class="panel" style="height:230px"><div class="ptitle">近7天虫害趋势</div><div class="chart-box"><div id="trend7Chart" class="sc"></div></div></div>
 <div class="panel" style="height:170px"><div class="ptitle">虫害发展趋势预测</div><div class="chart-box"><div id="predChart" class="pc"></div></div></div>
 <div class="panel" id="rightPanelB" style="height:270px;overflow:hidden">
 <div class="ptitle">预警信息</div>
@@ -320,9 +321,13 @@ try{fetch(window.BACKEND_URL+"/api/stats/overview").then(function(r){return r.js
 function loadAlerts(){
 console.log("loadAlerts start");
 try{fetch(window.BACKEND_URL+"/api/stats/alerts").then(function(r){return r.json()}).then(function(j){if(j.code!==0){console.error("alerts code!=0",j);return}var list=j.data||[];var el=document.getElementById("warnList");if(!el)return;if(!list.length){el.innerHTML='<div class="warn-item"><span class="warn-info">暂无预警信息</span></div>';return}var html="";list.forEach(function(w){var dot="green";if(w.riskLevel==="高风险"||w.riskLevel==="极高风险")dot="red";else if(w.riskLevel==="中风险"||w.riskLevel==="疑似高风险")dot="amber";html+='<div class="warn-item"><div class="warn-dot '+dot+'"></div><span class="warn-time">'+(w.time||"").slice(5,16)+'</span><span class="warn-area">'+esc(w.area)+'</span><span class="warn-info">'+esc(w.species)+'，'+esc(w.riskLevel)+'</span></div>'});el.innerHTML=html}).catch(function(e){console.error(e)})}catch(e){console.error(e)}}
+function loadTrend(){
+console.log("loadTrend start");
+try{fetch(window.BACKEND_URL+"/api/stats/trend").then(function(r){return r.json()}).then(function(j){if(j.code!==0){console.error("trend code!=0",j);return}var list=j.data||[];var chartEl=document.getElementById("trend7Chart");if(!chartEl)return;if(typeof echarts==="undefined"){console.warn("echarts 未加载，跳过近7天虫害趋势图");return}if(!window.TC7)window.TC7=echarts.init(chartEl);window.TC7.setOption({tooltip:{trigger:"axis"},grid:{left:"10%",right:"8%",top:"12%",bottom:"18%"},xAxis:{type:"category",data:list.map(function(x){return x.date}),axisLabel:{color:"rgba(140,170,210,0.5)",fontSize:18},axisLine:{show:false}},yAxis:{type:"value",minInterval:1,axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:17},splitLine:{lineStyle:{color:"rgba(140,170,210,0.06)"}}},series:[{type:"line",smooth:true,symbol:"circle",symbolSize:6,lineStyle:{color:"#00d4ff",width:2,shadowBlur:8,shadowColor:"rgba(0,212,255,0.4)"},itemStyle:{color:"#00d4ff"},areaStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(0,212,255,0.25)"},{offset:1,color:"rgba(0,212,255,0.02)"}]}},data:list.map(function(x){return x.count})}]},true)}).catch(function(e){console.error(e)})}catch(e){console.error(e)}}
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}
 loadOverview();
 loadAlerts();
+loadTrend();
 if(typeof echarts==="undefined")return;
 var PRC=null;
 
@@ -358,6 +363,7 @@ if(prEl){
 PRC=echarts.init(prEl);
 }
 window.addEventListener("resize",function(){if(PRC)PRC.resize()});
+window.addEventListener("resize",function(){if(window.TC7)window.TC7.resize()});
 }
 
 var _t=setInterval(function(){if(document.getElementById("predChart")&&PRC===null){initNew();clearInterval(_t)}},200);
