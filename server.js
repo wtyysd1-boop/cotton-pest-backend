@@ -42,8 +42,6 @@ if (process.env.NODE_ENV !== 'production') {
 
 // ── API 路由 ──
 app.use('/api/areas', areasRouter);
-const initRouter = require('./routes/init');
-app.use('/api/init', initRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/upload', uploadRouter);
