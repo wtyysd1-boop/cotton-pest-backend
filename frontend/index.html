@@ -59,6 +59,7 @@ height:140px
 #rightPanelB .warn-list{overflow-y:auto;max-height:240px}.warn-item{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:15px;color:var(--dim);border-radius:4px;transition:background .2s}.warn-item:hover{background:rgba(0,212,255,0.06)}
 .warn-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}.warn-dot.red{background:var(--red);box-shadow:0 0 3px var(--red)}
 .warn-dot.amber{background:var(--amber);box-shadow:0 0 3px var(--amber)}
+.warn-dot.green{background:var(--green);box-shadow:0 0 3px var(--green)}
 .warn-time{font-size:18px;color:rgba(140,170,210,0.4);font-family:JetBrains Mono,Cascadia Code,Fira Code,Consolas,monospace;white-space:nowrap}
 .warn-area{font-weight:600;color:var(--text)}.warn-info{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .loading-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,10,26,0.85);z-index:200;gap:10px;font-size:16px;color:var(--dim)}
@@ -102,17 +103,12 @@ height:600px;
 <div class="panel" id="panelA">
 <div class="ptitle">监测状态</div>
 <div class="overview-row" style="padding:0 10px"><div class="micro-row">
-<div class="micro-cell"><div class="val cyan"><span id="microTotal">--</span></div><div class="lbl">监测点</div></div>
-<div class="micro-cell"><div class="val green"><span id="microOnline">--</span></div><div class="lbl">在线</div></div>
-<div class="micro-cell"><div style="color:var(--dim);font-size:17px;font-weight:700;font-family:JetBrains Mono"><span id="microOffline">--</span></div><div class="lbl">离线</div></div>
-<div class="micro-cell"><div class="val amber"><span id="microWarn">--</span></div><div class="lbl">预警</div></div>
+<div class="micro-cell"><div class="val cyan"><span id="microTotal">--</span></div><div class="lbl">累计上报</div></div>
+<div class="micro-cell"><div class="val green"><span id="microOnline">--</span></div><div class="lbl">涉及区域</div></div>
+<div class="micro-cell"><div style="color:var(--dim);font-size:17px;font-weight:700;font-family:JetBrains Mono"><span id="microOffline">--</span></div><div class="lbl">风险事件</div></div>
+<div class="micro-cell"><div class="val amber"><span id="microWarn">--</span></div><div class="lbl">数据完整率</div></div>
 </div><canvas id="mgCanvas" class="mini-gauge" width="44" height="44"></canvas></div>
-<div class="wl-row" id="warnLevels">
-<div class="wl-cell green"><div class="num">--</div><div class="lbl">一般</div></div>
-<div class="wl-cell amber"><div class="num">--</div><div class="lbl">较重</div></div>
-<div class="wl-cell red"><div class="num">--</div><div class="lbl">严重</div></div>
-</div>
-<div class="ptitle">监测点状态</div>
+<div class="ptitle">重点监测区域</div>
 <div class="mon-list" id="monList"><div class="mon-item"><div class="mon-dot on"></div><span class="mon-name">加载中...</span><span class="mon-time"></span></div></div>
 <div class="ptitle">重点关注区域 Top3</div>
 <div class="top3-list" id="top3List"><div class="top3-item"><span class="top3-rank" style="color:var(--dim)">--</span><span class="top3-name">加载中...</span></div></div>
@@ -176,7 +172,7 @@ var CS=[{p:0,c:"#0a4b33"},{p:0.25,c:"#2d8a4e"},{p:0.5,c:"#e6a817"},{p:0.75,c:"#d
 function gc(t){for(var i=1;i<CS.length;i++){var s=CS[i-1],e=CS[i];if(t<=e.p){var f=(t-s.p)/(e.p-s.p);return lc(s.c,e.c,f)}}return CS[CS.length-1].c}
 function lc(a,b,t){function h(x){return parseInt(x,16)};function p(v){var hh=Math.round(v).toString(16);return hh.length===1?"0"+hh:hh};return "#"+p(h(a[1]+a[2])*(1-t)+h(b[1]+b[2])*t)+p(h(a[3]+a[4])*(1-t)+h(b[3]+b[4])*t)+p(h(a[5]+a[6])*(1-t)+h(b[5]+b[6])*t)}
 function loadFocusAreas(){
-try{fetch(BACKEND_URL+"/api/stats/focus-areas").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var el=document.getElementById("top3List");if(!el)return;var list=j.data||[];if(!list.length){el.innerHTML='<div class="top3-item"><span>暂无重点关注区域</span></div>';return}var marks=["①","②","③"];var html="";list.forEach(function(a,i){html+='<div class="top3-item"><span>'+marks[i]+'</span><span>'+a.name+'</span><span>'+a.level+'</span></div>'});el.innerHTML=html}).catch(function(){})}catch(e){}}
+try{fetch(BACKEND_URL+"/api/stats/focus-areas").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var list=j.data||[];var el=document.getElementById("top3List");if(el){if(!list.length){el.innerHTML='<div class="top3-item"><span>暂无重点关注区域</span></div>'}else{var marks=["①","②","③"];var html="";list.forEach(function(a,i){html+='<div class="top3-item"><span>'+marks[i]+'</span><span>'+a.name+'</span><span>'+a.level+'</span></div>'});el.innerHTML=html}}var ml=document.getElementById("monList");if(ml){if(!list.length){ml.innerHTML='<div class="mon-item"><span class="mon-name">暂无重点监测区域</span></div>'}else{var sHtml="";list.forEach(function(a){sHtml+='<div class="mon-item"><div class="mon-dot on"></div><span class="mon-name">'+a.name+'</span><span class="mon-time">'+a.count+'条上报</span></div>'});ml.innerHTML=sHtml}}}).catch(function(){})}catch(e){}}
 function loadSuggestion(){
 try{fetch(BACKEND_URL+"/api/stats/suggestion").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var el=document.getElementById("recText");if(el&&j.data&&j.data.suggestion)el.textContent=j.data.suggestion}).catch(function(){})}catch(e){}}
 function init(){
@@ -320,23 +316,6 @@ if(typeof AMap!=="undefined"){init()}else{window.onload=init}
 <script>(function(){
 if(typeof echarts==="undefined")return;
 var PRC=null;
-var CM={all:10,"430100":6,"430200":5,"430300":4,"430400":7,"430500":5,"430600":8,"430700":8,"430800":4,"430900":6,"431000":5,"431100":5,"431200":6,"431300":4,"433100":4};
-var BN={all:["长沙南","常德北","岳阳东","益阳西","衡阳中","郴州边","怀化基","永州南","张家界","湘西山"]};
-
-function genMonitors(aid){
-var total=CM[aid]||5;var online=Math.round(total*(0.6+Math.random()*0.3));online=Math.max(1,Math.min(total-1,online));
-var warns=0;var list=[];
-for(var i=0;i<total;i++){var io=i<online;if(!io)warns++;list.push({name:BN.all[i]||"基地"+String.fromCharCode(65+i%6),online:io})}
-document.getElementById("microTotal").textContent=total;
-document.getElementById("microOnline").textContent=online;
-document.getElementById("microOffline").textContent=total-online;
-document.getElementById("microWarn").textContent=Math.min(warns,3);
-var sHtml="";list.forEach(function(m){sHtml+="<div class=\"mon-item\"><div class=\"mon-dot "+(m.online?"on":"off")+"\"></div><span class=\"mon-name\">"+m.name+"</span><span class=\"mon-time\">"+(m.online?"在线":"离线")+"</span></div>"});
-var ml=document.getElementById("monList");if(ml)ml.innerHTML=sHtml;
-// Warn levels
-var mild=Math.round(warns*0.5);var mod=Math.round(warns*0.3);var sev=Math.max(0,warns-mild-mod);
-var wl=document.getElementById("warnLevels");if(wl)wl.innerHTML="<div class=\"wl-item green\"><div class=\"wl-num\">"+mild+"</div><div class=\"wl-lbl\">一般</div></div><div class=\"wl-item amber\"><div class=\"wl-num\">"+mod+"</div><div class=\"wl-lbl\">较重</div></div><div class=\"wl-item red\"><div class=\"wl-num\">"+sev+"</div><div class=\"wl-lbl\">严重</div></div>";
-}
 
 function drawMiniGauge(c,rate){
 if(!c||!c.getContext)return;var ctx=c.getContext("2d");var w=c.width,h=c.height,cx=w/2,cy=h/2,r=Math.min(w,h)/2-5;
@@ -348,33 +327,24 @@ ctx.fillStyle="#e0e8f0";ctx.font="bold 11px sans-serif";ctx.textAlign="center";c
 
 window.updateNewCharts=function(d,range){window._lastData={d:d,r:range};
 if(!d)return;var aid=d.areaId||"all";
-genMonitors(aid);
 var mg=document.getElementById("mgCanvas");if(mg)drawMiniGauge(mg,Math.round(d.rate||0));
 document.getElementById("infoTemp").textContent=d.avgTemperature!=null?d.avgTemperature:"--";document.getElementById("infoHum").textContent=d.avgHumidity!=null?d.avgHumidity:"--";
 // Prediction chart
 if(PRC&&d.trend&&d.trend.length>=2){
 var dates=d.trend.map(function(x){return x.date.slice(5)});var totals=d.trend.map(function(x){return x.total});var n=d.trend.length;var lv=d.trend[n-1].total;
-var pD=["预测1","预测2","预测3"];var pV=[Math.round(lv*(0.85+Math.random()*0.3)),Math.round(lv*(0.8+Math.random()*0.4)),Math.round(lv*(0.75+Math.random()*0.5))];var nb=[];for(var i=0;i<n;i++)nb.push(null);
+var pD=["预测1","预测2","预测3"];var first=d.trend[0].total||0;var step=(lv-first)/(n>1?n-1:1);var pV=[lv+step,lv+2*step,lv+3*step].map(function(v){return Math.max(0,Math.round(v))});var nb=[];for(var i=0;i<n;i++)nb.push(null);
 PRC.setOption({tooltip:{trigger:"axis"},grid:{left:"10%",right:"8%",top:"12%",bottom:"20%"},xAxis:{type:"category",data:dates.concat(pD),axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:18},axisLine:{show:false},splitLine:{show:false}},yAxis:{type:"value",axisLabel:{color:"rgba(140,170,210,0.3)",fontSize:17},splitLine:{lineStyle:{color:"rgba(140,170,210,0.04)"}}},series:[{name:"实际",type:"line",smooth:true,symbol:"circle",symbolSize:4,lineStyle:{color:"#00d4ff",width:1.5,shadowBlur:6,shadowColor:"rgba(0,212,255,0.3)"},itemStyle:{color:"#00d4ff"},data:totals.concat([null,null,null])},{name:"预测",type:"line",smooth:true,symbol:"diamond",symbolSize:4,lineStyle:{color:"#ff2d78",width:1.5,shadowBlur:6,shadowColor:"rgba(255,45,120,0.3)"},itemStyle:{color:"#ff2d78"},data:nb.concat(pV)}]},true);
 }
 // Warnings
-updateWarnings(d.trend);
+loadAlerts();
 // Top 3
 fetchTop3(d,range||"1d");
 };
 
-function updateWarnings(trendData){
-if(!trendData||trendData.length<1)return;
-var areas=["长沙","常德","岳阳","益阳","衡阳","郴州","怀化"];var pests=[
-"棉铃虫",
-"红蜘蛛",
-"蚜虫",
-"盲蝽象",
-"白粉虱"
-];var sev=["轻","中","重","特重"];var wd=[];var now=new Date();for(var i=0;i<trendData.length;i++){var cnt=trendData[i].total||0;if(cnt>0){for(var j=0;j<Math.min(cnt,2);j++){var t=new Date(now-(trendData.length-i)*86400000+Math.random()*86400000);wd.push({time:t.toLocaleString("zh-CN"),area:areas[Math.floor(Math.random()*areas.length)],pest:pests[Math.floor(Math.random()*pests.length)],sev:sev[Math.floor(Math.random()*sev.length)],dot:Math.random()>0.5?"red":"amber"})}}}
-if(wd.length>10)wd=wd.slice(0,10);wd.sort(function(a,b){return a.time>b.time?-1:1});
-var html="";wd.forEach(function(w){html+="<div class=\"warn-item\"><div class=\"warn-dot "+w.dot+"\"></div><span class=\"warn-time\">"+w.time.slice(-8)+"</span><span class=\"warn-area\">"+w.area+"</span><span class=\"warn-info\">"+w.pest+"，"+w.sev+"</span></div>"});document.getElementById("warnList").innerHTML=html;
-}
+function loadOverview(){
+try{fetch(BACKEND_URL+"/api/stats/overview").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var d=j.data||{};var items={microTotal:d.totalReports,microOnline:d.areaCount,microOffline:d.riskEventCount,microWarn:d.completeness==null?"--":d.completeness+"%"};for(var k in items){var el=document.getElementById(k);if(el)el.textContent=items[k]}}).catch(function(){})}catch(e){}}
+function loadAlerts(){
+try{fetch(BACKEND_URL+"/api/stats/alerts").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var list=j.data||[];var el=document.getElementById("warnList");if(!el)return;if(!list.length){el.innerHTML='<div class="warn-item"><span class="warn-info">暂无预警信息</span></div>';return}var html="";list.forEach(function(w){var dot="green";if(w.riskLevel==="高风险"||w.riskLevel==="极高风险")dot="red";else if(w.riskLevel==="中风险"||w.riskLevel==="疑似高风险")dot="amber";html+='<div class="warn-item"><div class="warn-dot '+dot+'"></div><span class="warn-time">'+(w.time||"").slice(5,16)+'</span><span class="warn-area">'+esc(w.area)+'</span><span class="warn-info">'+esc(w.species)+'，'+esc(w.riskLevel)+'</span></div>'});el.innerHTML=html}).catch(function(){})}catch(e){}}
 
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}
 
@@ -388,35 +358,12 @@ if(prEl){
 PRC=echarts.init(prEl);
 }
 window.addEventListener("resize",function(){if(PRC)PRC.resize()});
-genMonitors("all");
-// Build initial monitor list (placeholder for station status list)
-var html="";for(var i=0;i<CM.all.length;i++){var nm=BN.all[i];html+="<div class=\"mon-item\"><div class=\"mon-dot "+(i<6?"on":"off")+"\"></div><span class=\"mon-name\">"+nm+"</span><span class=\"mon-time\">"+(i<6?"在线":"离线")+"</span></div>"}
-document.getElementById("monList").innerHTML=html;
 }
 
 var _t=setInterval(function(){if(document.getElementById("predChart")&&PRC===null){initNew();clearInterval(_t)}},200);
+loadOverview();
+loadAlerts();
 try{fetch(BACKEND_URL+"/api/stats/region/all?range=1d").then(function(r){return r.json()}).then(function(j){if(j.code===0&&window.updateNewCharts)window.updateNewCharts(j.data,"1d")}).catch(function(){})}catch(e){}
-setInterval(function(){
-
-try{
-
-var rr=(window._lastData&&window._lastData.r)||"1d";
-
-fetch(BACKEND_URL+"/api/stats/region/all?range="+rr)
-.then(function(r){
-return r.json()
-})
-.then(function(j){
-
-if(j.code===0 && window.updateNewCharts){
-window.updateNewCharts(j.data,rr);
-}
-
-})
-
-}catch(e){}
-
-},60000);
 console.log("[Enhance] loaded");
 })();</script>
 <script>
