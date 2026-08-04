@@ -5,6 +5,7 @@ const Area = require('../models/Area');
 
 // 综合风险评分模型：虫害率40分 + 趋势30分 + 天气20分 + 重点虫害10分
 const FOCUS_PEST_SPECIES = ['spider_mite', 'bollworm', 'noctuid'];
+const FOCUS_PEST_NAMES = ['红蜘蛛', '棉叶螨', '棉铃虫', '夜蛾'];
 
 function addRateRisk(rate, reasons) {
   if (rate >= 70) {
@@ -27,8 +28,16 @@ function addTrendRisk(trend, reasons) {
     return 0;
   }
 
-  const current = trend[trend.length - 1].infested || 0;
-  const previous = trend[trend.length - 2].infested || 0;
+  const countOf = item => {
+    if (!item) return 0;
+    if (typeof item.count === 'number') return item.count;
+    if (typeof item.infested === 'number') return item.infested;
+    if (typeof item.total === 'number') return item.total;
+    return Number(item.count || item.infested || item.total || 0) || 0;
+  };
+
+  const current = countOf(trend[trend.length - 1]);
+  const previous = countOf(trend[trend.length - 2]);
 
   if (previous === 0) {
     if (current > 0) {
@@ -62,7 +71,12 @@ function addWeatherRisk(avgTemperature, avgHumidity, reasons) {
 }
 
 function addSpeciesRisk(speciesDistribution, reasons) {
-  const hasFocusPest = speciesDistribution.some(item => FOCUS_PEST_SPECIES.includes(item.species));
+  const hasFocusPest = (speciesDistribution || []).some(item => {
+    const name = item.name || SPECIES_NAMES[item.species] || item.species || '';
+    return FOCUS_PEST_SPECIES.includes(item.species) ||
+      FOCUS_PEST_NAMES.includes(name) ||
+      FOCUS_PEST_NAMES.includes(item.species);
+  });
   if (hasFocusPest) {
     reasons.push('发现重点监测虫害类型');
     return 10;
@@ -70,7 +84,7 @@ function addSpeciesRisk(speciesDistribution, reasons) {
   return 0;
 }
 
-function assessRisk({ rate, avgTemperature, avgHumidity, trend, speciesDistribution }) {
+function calculateRiskScore({ rate, avgTemperature, avgHumidity, trend, speciesDistribution }) {
   const reasons = [];
   let score = 0;
 
@@ -81,16 +95,16 @@ function assessRisk({ rate, avgTemperature, avgHumidity, trend, speciesDistribut
 
   score = Math.min(100, Math.max(0, Math.round(score)));
 
-  let riskLevel = '低风险';
+  let level = '低风险';
   if (score >= 80) {
-    riskLevel = '极高风险';
+    level = '极高风险';
   } else if (score >= 60) {
-    riskLevel = '高风险';
+    level = '高风险';
   } else if (score >= 30) {
-    riskLevel = '中风险';
+    level = '中风险';
   }
 
-  return { riskScore: score, riskLevel, riskReasons: reasons };
+  return { score, level, reasons };
 }
 
 function calcConfidence(sampleCount) {
@@ -257,7 +271,7 @@ router.get('/region/:areaId', async (req, res, next) => {
     ];
     const trendData = await PestReport.aggregate(trendPipeline);
 
-    const risk = assessRisk({
+    const risk = calculateRiskScore({
       rate: base.rate,
       avgTemperature: base.avgTemperature,
       avgHumidity: base.avgHumidity,
@@ -269,7 +283,7 @@ router.get('/region/:areaId', async (req, res, next) => {
     const confidenceInfo = calcConfidence(sampleCount);
 
     // 样本过少时，最高只显示疑似高风险，避免少量样本导致误报
-    let riskLevel = risk.riskLevel;
+    let riskLevel = risk.level;
     if (sampleCount < 3 && (riskLevel === '高风险' || riskLevel === '极高风险')) {
       riskLevel = '疑似高风险';
     }
@@ -282,9 +296,9 @@ router.get('/region/:areaId', async (req, res, next) => {
         total: base.total,
         infested: base.infested,
         rate: parseFloat(base.rate.toFixed(2)),
-        riskScore: risk.riskScore,
+        riskScore: risk.score,
         riskLevel,
-        riskReasons: risk.riskReasons,
+        riskReasons: risk.reasons,
         sampleCount,
         confidence: confidenceInfo.confidence,
         confidenceDescription: confidenceInfo.description,
@@ -388,7 +402,7 @@ router.get('/alerts', async (req, res, next) => {
     const data = reports.map(report => {
       const infested = isInfestedReport(report);
       const species = report.pestInfo ? report.pestInfo.species : null;
-      const risk = assessRisk({
+      const risk = calculateRiskScore({
         rate: infested ? 100 : 0,
         avgTemperature: report.weather ? report.weather.temperature : null,
         avgHumidity: report.weather ? report.weather.humidity : null,
@@ -400,7 +414,8 @@ router.get('/alerts', async (req, res, next) => {
         time: formatReportTime(report.timestamp),
         area: nameMap.get(report.areaId) || '区域' + report.areaId,
         species: SPECIES_NAMES[species] || species || '未知',
-        riskLevel: risk.riskLevel,
+        riskLevel: risk.level,
+        riskScore: risk.score,
         confidence: report.pestInfo && report.pestInfo.confidence != null
           ? report.pestInfo.confidence
           : null
