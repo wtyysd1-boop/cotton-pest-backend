@@ -490,6 +490,46 @@ router.get('/overview', async (req, res, next) => {
   }
 });
 
+/**
+ * GET /api/stats/trend
+ * 最近7天每天的虫害上报数量（无数据日期补0，按日期升序）
+ */
+router.get('/trend', async (req, res, next) => {
+  try {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const grouped = await PestReport.aggregate([
+      { $match: { timestamp: { $gte: since } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+          count: { $sum: 1 }
+        }
+      },
+      { $project: { _id: 0, date: '$_id', count: 1 } }
+    ]);
+
+    const countMap = new Map(grouped.map(item => [item.date, item.count]));
+
+    const data = [];
+    for (let i = 6; i >= 0; i--) {
+      const day = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const key = day.getUTCFullYear() + '-' +
+        String(day.getUTCMonth() + 1).padStart(2, '0') + '-' +
+        String(day.getUTCDate()).padStart(2, '0');
+      data.push({
+        date: String(day.getUTCMonth() + 1).padStart(2, '0') + '-' +
+          String(day.getUTCDate()).padStart(2, '0'),
+        count: countMap.get(key) || 0
+      });
+    }
+
+    res.json({ code: 0, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
 const SPECIES_SUGGESTIONS = {
   leafhopper: {
     pest: '棉叶蝉',
