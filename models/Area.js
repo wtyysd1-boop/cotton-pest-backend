@@ -19,6 +19,16 @@ const areaSchema = new mongoose.Schema({
     default: 'city',
     comment: '行政级别'
   },
+  latitude: {
+    type: Number,
+    default: null,
+    comment: '区域中心纬度'
+  },
+  longitude: {
+    type: Number,
+    default: null,
+    comment: '区域中心经度'
+  },
   center: {
     type: {
       type: String,
