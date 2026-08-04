@@ -2,6 +2,7 @@
 const router = express.Router();
 const PestReport = require('../models/PestReport');
 const Area = require('../models/Area');
+const { getAdvice } = require('../utils/pestAdvice');
 
 // 综合风险评分模型：虫害率40分 + 趋势30分 + 天气20分 + 重点虫害10分
 const FOCUS_PEST_SPECIES = ['spider_mite', 'bollworm', 'noctuid'];
@@ -479,6 +480,113 @@ router.get('/focus-areas', async (req, res, next) => {
         ...a,
         area: nameMap.get(a.areaId) || '区域' + a.areaId
       }))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/stats/advice/:areaId
+ * 返回指定区域主要病虫害的防治方案（基于统一风险评分逻辑）
+ */
+router.get('/advice/:areaId', async (req, res, next) => {
+  try {
+    const { areaId } = req.params;
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const matchStage = { timestamp: { $gte: since } };
+    const numericAreaId = parseInt(areaId, 10);
+    if (areaId !== 'all') {
+      matchStage.areaId = numericAreaId;
+    }
+    const infestedCond = {
+      $and: [
+        { $ne: ['$pestInfo.species', 'none'] },
+        { $gt: ['$pestInfo.confidence', 0.3] }
+      ]
+    };
+
+    const [baseStats, speciesList, trendList] = await Promise.all([
+      PestReport.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            infested: { $sum: { $cond: [infestedCond, 1, 0] } },
+            avgTemperature: { $avg: '$weather.temperature' },
+            avgHumidity: { $avg: '$weather.humidity' }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            total: 1,
+            infested: 1,
+            rate: {
+              $cond: [
+                { $gt: ['$total', 0] },
+                { $multiply: [{ $divide: ['$infested', '$total'] }, 100] },
+                0
+              ]
+            },
+            avgTemperature: { $round: ['$avgTemperature', 1] },
+            avgHumidity: { $round: ['$avgHumidity', 0] }
+          }
+        }
+      ]),
+      PestReport.aggregate([
+        { $match: { ...matchStage, 'pestInfo.species': { $ne: 'none' }, 'pestInfo.confidence': { $gt: 0.3 } } },
+        { $group: { _id: '$pestInfo.species', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $project: { _id: 0, species: '$_id', count: 1 } }
+      ]),
+      PestReport.aggregate([
+        { $match: matchStage },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+            total: { $sum: 1 },
+            infested: { $sum: { $cond: [infestedCond, 1, 0] } }
+          }
+        },
+        { $sort: { _id: 1 } },
+        { $project: { _id: 0, date: '$_id', total: 1, infested: 1 } }
+      ])
+    ]);
+
+    const base = baseStats[0] || { total: 0, infested: 0, rate: 0, avgTemperature: null, avgHumidity: null };
+    const risk = calculateRiskScore({
+      rate: base.rate,
+      avgTemperature: base.avgTemperature,
+      avgHumidity: base.avgHumidity,
+      trend: trendList,
+      speciesDistribution: speciesList
+    });
+
+    let riskLevel = risk.level;
+    if (base.total < 3 && (riskLevel === '高风险' || riskLevel === '极高风险')) {
+      riskLevel = '疑似高风险';
+    }
+
+    let areaName = '湖南省';
+    if (areaId !== 'all') {
+      const area = await Area.findOne({ adcode: numericAreaId }, { name: 1, _id: 0 }).lean();
+      areaName = area ? area.name : '区域' + areaId;
+    }
+
+    const topSpecies = speciesList.length ? speciesList[0].species : null;
+    const speciesName = topSpecies ? (SPECIES_NAMES[topSpecies] || topSpecies) : '健康';
+
+    res.json({
+      code: 0,
+      data: {
+        area: areaName,
+        species: speciesName,
+        riskScore: risk.score,
+        riskLevel,
+        advice: getAdvice(speciesName)
+      }
     });
   } catch (err) {
     next(err);
