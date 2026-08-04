@@ -13,6 +13,7 @@ const areasRouter = require('./routes/areas');
 const reportsRouter = require('./routes/reports');
 const statsRouter = require('./routes/stats');
 const uploadRouter = require('./routes/upload');
+const weatherRouter = require('./routes/weather');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,6 +46,7 @@ app.use('/api/areas', areasRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/weather', weatherRouter);
 
 // 健康检查（用于部署监控/保活）
 app.get('/api/health', (req, res) => {
