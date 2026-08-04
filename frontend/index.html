@@ -43,6 +43,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;ba
 .top3-pest{font-size:18px;color:var(--dim);padding:1px 5px;border-radius:3px;background:rgba(0,212,255,0.06)}
 .rec-box{background:rgba(0,212,255,0.04);border:1px solid rgba(0,212,255,0.08);border-radius:4px;padding:5px 8px;margin:0 10px 8px}
 .rec-text{font-size:22px;color:var(--text);line-height:1.5}.rec-text .hl{color:var(--amber);font-weight:700}.rec-text .hl2{color:var(--magenta);font-weight:700}
+.advice-head{display:flex;align-items:center;gap:10px;padding:2px 0 8px;border-bottom:1px solid rgba(0,212,255,0.08);margin-bottom:6px}
+.advice-name{font-size:22px;font-weight:700;color:var(--text)}
+.advice-level{font-size:15px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--green);color:#08121f}
+.advice-level.red{background:var(--red);color:#fff}
+.advice-level.amber{background:var(--amber);color:#08121f}
+.advice-row{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid rgba(0,212,255,0.03)}
+.advice-lbl{width:64px;flex-shrink:0;font-size:16px;color:var(--cyan)}
+.advice-txt{flex:1;font-size:17px;color:var(--text);line-height:1.45}
 .env-item{display:flex;justify-content:space-between;padding:7px 10px;border-bottom:1px solid rgba(0,212,255,0.03)}
 .env-item .lbl{font-size:22px;color:var(--dim)}.env-item .val{font-size:32px;font-weight:700;font-family:JetBrains Mono,Cascadia Code,Fira Code,Consolas,monospace}
 .env-item .val.cyan{color:var(--cyan)}.env-item .val.green{color:var(--green)}.env-item .val.magenta{color:var(--magenta)}
@@ -113,7 +121,7 @@ height:600px;
 <div class="ptitle">重点关注区域 Top3</div>
 <div class="top3-list" id="top3List"><div class="top3-item"><span class="top3-rank" style="color:var(--dim)">--</span><span class="top3-name">加载中...</span></div></div>
 <div class="ptitle">防治建议</div>
-<div class="rec-box"><div class="rec-text" id="recText">数据加载中...</div></div>
+<div class="rec-box" id="recBox"><div class="rec-text" id="recText">数据加载中...</div></div>
 </div>
 <div class="panel" id="panelB">
 <div class="ptitle">环境参数</div>
@@ -193,7 +201,7 @@ window._amap=map;
 AMap.plugin(["AMap.ToolBar"],function(){map.addControl(new AMap.ToolBar({position:"LT"}))});
 map.on("complete",function(){ld().then(function(){document.getElementById("loading").style.display="none"})});
 }
-async function ld(){var r=await fetch(window.BACKEND_URL+"/api/areas");var j=await r.json();if(j.code!==0)return;var c=j.data;c.forEach(function(x){cityMap[x.name]=x;cityOrder.push(x.name)});await lg(c);await lp(curRange);await ls("all",curRange);loadFocusAreas();loadSuggestion()}
+async function ld(){var r=await fetch(window.BACKEND_URL+"/api/areas");var j=await r.json();if(j.code!==0)return;var c=j.data;c.forEach(function(x){cityMap[x.name]=x;cityOrder.push(x.name)});await lg(c);await lp(curRange);await ls("all",curRange);loadFocusAreas();loadAdvice("all")}
 async function lg(cities){var r=await fetch("assets/hunan.json");var geo=await r.json();geo.features.forEach(function(f){var nm=f.properties.name;var ci=cityMap[nm];
 
 if(!ci){
@@ -278,7 +286,7 @@ imgBox.innerHTML="暂无现场图片";
 
 }document.getElementById("photoLabel").textContent=(d.timestamp?new Date(d.timestamp).toLocaleString("zh-CN"):"")+" | "+(d.isInfested?"有虫害":"无虫害");if(d.lat&&d.lng){document.getElementById("infoLng").textContent=d.lng.toFixed(4);document.getElementById("infoLat").textContent=d.lat.toFixed(4)}if(d.temperature!=null)document.getElementById("infoTemp").textContent=d.temperature;if(d.humidity!=null)document.getElementById("infoHum").textContent=d.humidity});map.add(mk);markers.push(mk)})}catch(e){}}
 async function ls(aid,range){try{var r=await fetch(window.BACKEND_URL+"/api/stats/region/"+aid+"?range="+range);var j=await r.json();if(j.code!==0)return;var d=j.data;document.getElementById("kpiRate").textContent=d.rate.toFixed(1);document.getElementById("kpiTotal").textContent=d.total;document.getElementById("infoTemp").textContent=d.avgTemperature!=null?d.avgTemperature:"--";document.getElementById("infoHum").textContent=d.avgHumidity!=null?d.avgHumidity:"--";if(SC&&d.speciesDistribution){SC.setOption({tooltip:{trigger:"item",formatter:function(p){return p.name+"<br/>"+p.value+"条"}},series:[{type:"pie",radius:["30%","58%"],center:["50%","50%"],itemStyle:{borderRadius:4,borderColor:"rgba(6,14,36,0.9)",borderWidth:2},label:{show:true,formatter:function(p){return p.name},color:"rgba(140,170,210,0.7)",fontSize:17},labelLine:{lineStyle:{color:"rgba(140,170,210,0.15)"}},data:d.speciesDistribution.map(function(s){return{value:s.count,name:SN[s.species]||s.name,itemStyle:{color:PC[s.species]||"#00d4ff"}}})}]},true)}if(SeC&&d.severityDistribution){var sm={};SEV.forEach(function(s){sm[s]=0});d.severityDistribution.forEach(function(s){sm[s.level]=s.count});SeC.setOption({tooltip:{trigger:"axis",axisPointer:{type:"shadow"}},grid:{left:"14%",right:"8%",top:"8%",bottom:"16%"},xAxis:{type:"category",data:SEV,axisLabel:{color:"rgba(140,170,210,0.5)",fontSize:18},axisLine:{show:false}},yAxis:{type:"value",axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:17},splitLine:{lineStyle:{color:"rgba(140,170,210,0.06)"}}},series:[{type:"bar",barWidth:"50%",data:SEV.map(function(l,i){return{value:sm[l]||0,itemStyle:{color:SEV_C[i],borderRadius:[5,5,0,0]}}})}]},true)}if(TC&&d.trend&&d.trend.length){TC.setOption({tooltip:{trigger:"axis"},grid:{left:"10%",right:"8%",top:"10%",bottom:"24%"},xAxis:{type:"category",data:d.trend.map(function(x){return x.date.slice(5)}),axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:17},axisLine:{show:false}},yAxis:{type:"value",axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:17},splitLine:{lineStyle:{color:"rgba(140,170,210,0.06)"}}},series:[{type:"bar",barWidth:"50%",itemStyle:{borderRadius:[4,4,0,0],color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(0,212,255,0.7)"},{offset:1,color:"rgba(0,212,255,0.15)"}]}},data:d.trend.map(function(x){return x.total})}]},true)}if(typeof updateNewCharts==="function")try{updateNewCharts(d,range)}catch(e){}
-document.getElementById("infoLng").textContent="--";document.getElementById("infoLat").textContent="--"}catch(e){}}
+loadAdvice(aid);document.getElementById("infoLng").textContent="--";document.getElementById("infoLat").textContent="--"}catch(e){}}
 function sel(id,name){
 
 curArea=String(id);
@@ -320,6 +328,9 @@ try{fetch(window.BACKEND_URL+"/api/stats/overview").then(function(r){return r.js
 function loadAlerts(){
 console.log("loadAlerts start");
 try{fetch(window.BACKEND_URL+"/api/stats/alerts").then(function(r){return r.json()}).then(function(j){if(j.code!==0){console.error("alerts code!=0",j);return}var list=j.data||[];var el=document.getElementById("warnList");if(!el)return;if(!list.length){el.innerHTML='<div class="warn-item"><span class="warn-info">暂无预警信息</span></div>';return}var html="";list.forEach(function(w){var dot="green";if(w.riskLevel==="高风险"||w.riskLevel==="极高风险")dot="red";else if(w.riskLevel==="中风险"||w.riskLevel==="疑似高风险")dot="amber";html+='<div class="warn-item"><div class="warn-dot '+dot+'"></div><span class="warn-time">'+(w.time||"").slice(5,16)+'</span><span class="warn-area">'+esc(w.area)+'</span><span class="warn-info">'+esc(w.species)+'，'+esc(w.riskLevel)+'</span></div>'});el.innerHTML=html}).catch(function(e){console.error(e)})}catch(e){console.error(e)}}
+window.loadAdvice=function(aid){
+console.log("loadAdvice start:"+aid);
+try{fetch(window.BACKEND_URL+"/api/stats/advice/"+aid).then(function(r){return r.json()}).then(function(j){if(j.code!==0){console.error("advice code!=0",j);return}var d=j.data||{};var a=d.advice||{};var el=document.getElementById("recBox");if(!el)return;var lvCls="advice-level";if(d.riskLevel==="高风险"||d.riskLevel==="极高风险"||d.riskLevel==="疑似高风险")lvCls+=" red";else if(d.riskLevel==="中风险")lvCls+=" amber";var html='<div class="advice-head"><span class="advice-name">'+esc(d.species)+'</span><span class="'+lvCls+'">'+esc(d.riskLevel)+'</span></div>';var rows=[["发生特点",a.feature],["危害症状",a.symptom],["重点巡查",a.inspect],["农业措施",a.prevention],["防治建议",a.control],["注意事项",a.attention]];rows.forEach(function(rw){html+='<div class="advice-row"><div class="advice-lbl">'+rw[0]+'</div><div class="advice-txt">'+esc(rw[1])+'</div></div>'});el.innerHTML=html}).catch(function(e){console.error(e)})}catch(e){console.error(e)}}
 function loadTrend(){
 console.log("loadTrend start");
 try{fetch(window.BACKEND_URL+"/api/stats/trend").then(function(r){return r.json()}).then(function(j){if(j.code!==0){console.error("trend code!=0",j);return}var list=j.data||[];var chartEl=document.getElementById("trend7Chart");if(!chartEl)return;if(typeof echarts==="undefined"){console.warn("echarts 未加载，跳过近7天虫害趋势图");return}if(!window.TC7)window.TC7=echarts.init(chartEl);window.TC7.setOption({tooltip:{trigger:"axis"},grid:{left:"10%",right:"8%",top:"12%",bottom:"18%"},xAxis:{type:"category",data:list.map(function(x){return x.date}),axisLabel:{color:"rgba(140,170,210,0.5)",fontSize:18},axisLine:{show:false}},yAxis:{type:"value",minInterval:1,axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:17},splitLine:{lineStyle:{color:"rgba(140,170,210,0.06)"}}},series:[{type:"line",smooth:true,symbol:"circle",symbolSize:6,lineStyle:{color:"#00d4ff",width:2,shadowBlur:8,shadowColor:"rgba(0,212,255,0.4)"},itemStyle:{color:"#00d4ff"},areaStyle:{color:{type:"linear",x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:"rgba(0,212,255,0.25)"},{offset:1,color:"rgba(0,212,255,0.02)"}]}},data:list.map(function(x){return x.count})}]},true)}).catch(function(e){console.error(e)})}catch(e){console.error(e)}}
@@ -348,12 +359,10 @@ var dates=d.trend.map(function(x){return x.date.slice(5)});var totals=d.trend.ma
 var pD=["预测1","预测2","预测3"];var first=d.trend[0].total||0;var step=(lv-first)/(n>1?n-1:1);var pV=[lv+step,lv+2*step,lv+3*step].map(function(v){return Math.max(0,Math.round(v))});var nb=[];for(var i=0;i<n;i++)nb.push(null);
 PRC.setOption({tooltip:{trigger:"axis"},grid:{left:"10%",right:"8%",top:"12%",bottom:"20%"},xAxis:{type:"category",data:dates.concat(pD),axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:18},axisLine:{show:false},splitLine:{show:false}},yAxis:{type:"value",axisLabel:{color:"rgba(140,170,210,0.3)",fontSize:17},splitLine:{lineStyle:{color:"rgba(140,170,210,0.04)"}}},series:[{name:"实际",type:"line",smooth:true,symbol:"circle",symbolSize:4,lineStyle:{color:"#00d4ff",width:1.5,shadowBlur:6,shadowColor:"rgba(0,212,255,0.3)"},itemStyle:{color:"#00d4ff"},data:totals.concat([null,null,null])},{name:"预测",type:"line",smooth:true,symbol:"diamond",symbolSize:4,lineStyle:{color:"#ff2d78",width:1.5,shadowBlur:6,shadowColor:"rgba(255,45,120,0.3)"},itemStyle:{color:"#ff2d78"},data:nb.concat(pV)}]},true);
 }
-// Top 3
-fetchTop3(d,range||"1d");
 };
 
 
-function fetchTop3(d,range){try{fetch(window.BACKEND_URL+"/api/areas").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var cities=j.data;var results=[];Promise.all(cities.map(function(c){return fetch(window.BACKEND_URL+"/api/stats/region/"+c.id+"?range="+range).then(function(r){return r.json()}).then(function(jj){if(jj.code===0){results.push({name:c.name,rate:jj.data.rate,riskLevel:jj.data.riskLevel,species:jj.data.speciesDistribution&&jj.data.speciesDistribution.length>0?(window.SN?window.SN[jj.data.speciesDistribution[0].species]||jj.data.speciesDistribution[0].name:jj.data.speciesDistribution[0].name):"?"})}})})).then(function(){results.sort(function(a,b){return b.rate-a.rate});if(results.length>0){var r=results[0];var s=r.riskLevel;var h=r.rate>70?"建议30小时内组织紧急防治":r.rate>50?"建议48小时内组织专业化防治":r.rate>30?"建议3天内完成药剂喷洒":"常规观测，暂无紧急处置需求";document.getElementById("recText").innerHTML="当前 <span class=\"hl2\">"+esc(r.name)+"</span> 的 <span class=\"hl\">"+esc(r.species)+"</span> 已达“ <span class=\"hl2\">"+s+"</span> ”级，"+h+"。";}})}).catch(function(){})}catch(e){}}
+
 function initNew(){if(window.updateNewCharts&&window._lastData)try{window.updateNewCharts(window._lastData.d,window._lastData.r)}catch(e){}
 var prEl=document.getElementById("predChart");
 if(prEl){
