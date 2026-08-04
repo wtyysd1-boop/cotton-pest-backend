@@ -93,6 +93,25 @@ function assessRisk({ rate, avgTemperature, avgHumidity, trend, speciesDistribut
   return { riskScore: score, riskLevel, riskReasons: reasons };
 }
 
+function calcConfidence(sampleCount) {
+  if (sampleCount < 10) {
+    return {
+      confidence: '低',
+      description: '监测数据较少，风险结果仅供参考'
+    };
+  }
+  if (sampleCount < 50) {
+    return {
+      confidence: '中',
+      description: '已有一定监测数据，风险判断具有参考价值'
+    };
+  }
+  return {
+    confidence: '高',
+    description: '监测数据充足，风险判断较可靠'
+  };
+}
+
 /**
  * GET /api/stats/region/:areaId?range=1d|3d|7d
  * 返回该区域指定时间窗口内的聚合统计
@@ -232,6 +251,15 @@ router.get('/region/:areaId', async (req, res, next) => {
       speciesDistribution: speciesDist
     });
 
+    const sampleCount = base.total;
+    const confidenceInfo = calcConfidence(sampleCount);
+
+    // 样本过少时，最高只显示疑似高风险，避免少量样本导致误报
+    let riskLevel = risk.riskLevel;
+    if (sampleCount < 3 && (riskLevel === '高风险' || riskLevel === '极高风险')) {
+      riskLevel = '疑似高风险';
+    }
+
     res.json({
       code: 0,
       data: {
@@ -241,8 +269,11 @@ router.get('/region/:areaId', async (req, res, next) => {
         infested: base.infested,
         rate: parseFloat(base.rate.toFixed(2)),
         riskScore: risk.riskScore,
-        riskLevel: risk.riskLevel,
+        riskLevel,
         riskReasons: risk.riskReasons,
+        sampleCount,
+        confidence: confidenceInfo.confidence,
+        confidenceDescription: confidenceInfo.description,
         avgTemperature: base.avgTemperature,
         avgHumidity: base.avgHumidity,
         speciesDistribution: speciesDist.map(s => ({
