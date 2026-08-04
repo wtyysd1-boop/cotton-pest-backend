@@ -3,6 +3,96 @@ const router = express.Router();
 const PestReport = require('../models/PestReport');
 const Area = require('../models/Area');
 
+// 综合风险评分模型：虫害率40分 + 趋势30分 + 天气20分 + 重点虫害10分
+const FOCUS_PEST_SPECIES = ['spider_mite', 'bollworm', 'noctuid'];
+
+function addRateRisk(rate, reasons) {
+  if (rate >= 70) {
+    reasons.push('当前虫害发生比例较高');
+    return 40;
+  }
+  if (rate >= 40) {
+    reasons.push('当前虫害发生比例偏高');
+    return 30;
+  }
+  if (rate >= 20) {
+    reasons.push('当前存在一定比例的虫害发生');
+    return 15;
+  }
+  return 0;
+}
+
+function addTrendRisk(trend, reasons) {
+  if (!Array.isArray(trend) || trend.length < 2) {
+    return 0;
+  }
+
+  const current = trend[trend.length - 1].infested || 0;
+  const previous = trend[trend.length - 2].infested || 0;
+
+  if (previous === 0) {
+    if (current > 0) {
+      reasons.push('近期虫害数量增长明显');
+      return 30;
+    }
+    return 0;
+  }
+
+  const growth = ((current - previous) / previous) * 100;
+  if (growth >= 50) {
+    reasons.push('近期虫害数量增长明显');
+    return 30;
+  }
+  if (growth >= 20) {
+    reasons.push('虫害数量呈增长趋势');
+    return 15;
+  }
+  return 0;
+}
+
+function addWeatherRisk(avgTemperature, avgHumidity, reasons) {
+  if (avgTemperature === null || avgTemperature === undefined || avgHumidity === null || avgHumidity === undefined) {
+    return 0;
+  }
+  if (avgTemperature >= 25 && avgHumidity >= 60) {
+    reasons.push('当前温湿度适宜虫害发生');
+    return 20;
+  }
+  return 0;
+}
+
+function addSpeciesRisk(speciesDistribution, reasons) {
+  const hasFocusPest = speciesDistribution.some(item => FOCUS_PEST_SPECIES.includes(item.species));
+  if (hasFocusPest) {
+    reasons.push('发现重点监测虫害类型');
+    return 10;
+  }
+  return 0;
+}
+
+function assessRisk({ rate, avgTemperature, avgHumidity, trend, speciesDistribution }) {
+  const reasons = [];
+  let score = 0;
+
+  score += addRateRisk(rate, reasons);
+  score += addTrendRisk(trend, reasons);
+  score += addWeatherRisk(avgTemperature, avgHumidity, reasons);
+  score += addSpeciesRisk(speciesDistribution, reasons);
+
+  score = Math.min(100, Math.max(0, Math.round(score)));
+
+  let riskLevel = '低风险';
+  if (score >= 80) {
+    riskLevel = '极高风险';
+  } else if (score >= 60) {
+    riskLevel = '高风险';
+  } else if (score >= 30) {
+    riskLevel = '中风险';
+  }
+
+  return { riskScore: score, riskLevel, riskReasons: reasons };
+}
+
 /**
  * GET /api/stats/region/:areaId?range=1d|3d|7d
  * 返回该区域指定时间窗口内的聚合统计
@@ -134,6 +224,14 @@ router.get('/region/:areaId', async (req, res, next) => {
     ];
     const trendData = await PestReport.aggregate(trendPipeline);
 
+    const risk = assessRisk({
+      rate: base.rate,
+      avgTemperature: base.avgTemperature,
+      avgHumidity: base.avgHumidity,
+      trend: trendData,
+      speciesDistribution: speciesDist
+    });
+
     res.json({
       code: 0,
       data: {
@@ -142,7 +240,9 @@ router.get('/region/:areaId', async (req, res, next) => {
         total: base.total,
         infested: base.infested,
         rate: parseFloat(base.rate.toFixed(2)),
-        riskLevel: base.rate > 50 ? '高风险' : base.rate > 20 ? '中风险' : '低风险',
+        riskScore: risk.riskScore,
+        riskLevel: risk.riskLevel,
+        riskReasons: risk.riskReasons,
         avgTemperature: base.avgTemperature,
         avgHumidity: base.avgHumidity,
         speciesDistribution: speciesDist.map(s => ({
