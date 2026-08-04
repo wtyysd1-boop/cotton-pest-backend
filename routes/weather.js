@@ -52,7 +52,7 @@ router.get('/area/:areaId', async (req, res) => {
     } else {
       const area = await Area.findOne(
         { adcode: parseInt(areaId, 10) },
-        { name: 1, latitude: 1, longitude: 1, _id: 0 }
+        { name: 1, latitude: 1, longitude: 1, center: 1, _id: 0 }
       ).lean();
       console.log('area:', area);
       if (!area) {
@@ -61,6 +61,11 @@ router.get('/area/:areaId', async (req, res) => {
       areaName = area.name;
       lat = area.latitude;
       lng = area.longitude;
+      if ((lat == null || lng == null) && Array.isArray(area.center && area.center.coordinates)) {
+        lng = area.center.coordinates[0];
+        lat = area.center.coordinates[1];
+      }
+      console.log('weather coordinate', lat, lng);
     }
 
     if (lat == null || lng == null) {
