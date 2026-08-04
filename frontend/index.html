@@ -314,6 +314,15 @@ document.getElementById("photoClose").addEventListener("click",function(){docume
 if(typeof AMap!=="undefined"){init()}else{window.onload=init}
 })();</script>
 <script>(function(){
+function loadOverview(){
+console.log("loadOverview start");
+try{fetch(BACKEND_URL+"/api/stats/overview").then(function(r){return r.json()}).then(function(j){if(j.code!==0){console.error("overview code!=0",j);return}var d=j.data||{};var items={microTotal:d.totalReports,microOnline:d.areaCount,microOffline:d.riskEventCount,microWarn:d.completeness==null?"--":d.completeness+"%"};for(var k in items){var el=document.getElementById(k);if(el)el.textContent=items[k]}}).catch(function(e){console.error(e)})}catch(e){console.error(e)}}
+function loadAlerts(){
+console.log("loadAlerts start");
+try{fetch(BACKEND_URL+"/api/stats/alerts").then(function(r){return r.json()}).then(function(j){if(j.code!==0){console.error("alerts code!=0",j);return}var list=j.data||[];var el=document.getElementById("warnList");if(!el)return;if(!list.length){el.innerHTML='<div class="warn-item"><span class="warn-info">暂无预警信息</span></div>';return}var html="";list.forEach(function(w){var dot="green";if(w.riskLevel==="高风险"||w.riskLevel==="极高风险")dot="red";else if(w.riskLevel==="中风险"||w.riskLevel==="疑似高风险")dot="amber";html+='<div class="warn-item"><div class="warn-dot '+dot+'"></div><span class="warn-time">'+(w.time||"").slice(5,16)+'</span><span class="warn-area">'+esc(w.area)+'</span><span class="warn-info">'+esc(w.species)+'，'+esc(w.riskLevel)+'</span></div>'});el.innerHTML=html}).catch(function(e){console.error(e)})}catch(e){console.error(e)}}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}
+loadOverview();
+loadAlerts();
 if(typeof echarts==="undefined")return;
 var PRC=null;
 
@@ -335,18 +344,9 @@ var dates=d.trend.map(function(x){return x.date.slice(5)});var totals=d.trend.ma
 var pD=["预测1","预测2","预测3"];var first=d.trend[0].total||0;var step=(lv-first)/(n>1?n-1:1);var pV=[lv+step,lv+2*step,lv+3*step].map(function(v){return Math.max(0,Math.round(v))});var nb=[];for(var i=0;i<n;i++)nb.push(null);
 PRC.setOption({tooltip:{trigger:"axis"},grid:{left:"10%",right:"8%",top:"12%",bottom:"20%"},xAxis:{type:"category",data:dates.concat(pD),axisLabel:{color:"rgba(140,170,210,0.4)",fontSize:18},axisLine:{show:false},splitLine:{show:false}},yAxis:{type:"value",axisLabel:{color:"rgba(140,170,210,0.3)",fontSize:17},splitLine:{lineStyle:{color:"rgba(140,170,210,0.04)"}}},series:[{name:"实际",type:"line",smooth:true,symbol:"circle",symbolSize:4,lineStyle:{color:"#00d4ff",width:1.5,shadowBlur:6,shadowColor:"rgba(0,212,255,0.3)"},itemStyle:{color:"#00d4ff"},data:totals.concat([null,null,null])},{name:"预测",type:"line",smooth:true,symbol:"diamond",symbolSize:4,lineStyle:{color:"#ff2d78",width:1.5,shadowBlur:6,shadowColor:"rgba(255,45,120,0.3)"},itemStyle:{color:"#ff2d78"},data:nb.concat(pV)}]},true);
 }
-// Warnings
-loadAlerts();
 // Top 3
 fetchTop3(d,range||"1d");
 };
-
-function loadOverview(){
-try{fetch(BACKEND_URL+"/api/stats/overview").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var d=j.data||{};var items={microTotal:d.totalReports,microOnline:d.areaCount,microOffline:d.riskEventCount,microWarn:d.completeness==null?"--":d.completeness+"%"};for(var k in items){var el=document.getElementById(k);if(el)el.textContent=items[k]}}).catch(function(){})}catch(e){}}
-function loadAlerts(){
-try{fetch(BACKEND_URL+"/api/stats/alerts").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var list=j.data||[];var el=document.getElementById("warnList");if(!el)return;if(!list.length){el.innerHTML='<div class="warn-item"><span class="warn-info">暂无预警信息</span></div>';return}var html="";list.forEach(function(w){var dot="green";if(w.riskLevel==="高风险"||w.riskLevel==="极高风险")dot="red";else if(w.riskLevel==="中风险"||w.riskLevel==="疑似高风险")dot="amber";html+='<div class="warn-item"><div class="warn-dot '+dot+'"></div><span class="warn-time">'+(w.time||"").slice(5,16)+'</span><span class="warn-area">'+esc(w.area)+'</span><span class="warn-info">'+esc(w.species)+'，'+esc(w.riskLevel)+'</span></div>'});el.innerHTML=html}).catch(function(){})}catch(e){}}
-
-function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}
 
 function fetchTop3(d,range){
 try{fetch(BACKEND_URL+"/api/areas").then(function(r){return r.json()}).then(function(j){if(j.code!==0)return;var cities=j.data;var results=[];if(results.length===0){document.getElementById("top3List").innerHTML='<div class="top3-item">暂无数据</div>';}Promise.all(cities.map(function(c){return fetch(BACKEND_URL+"/api/stats/region/"+c.id+"?range="+range).then(function(r){return r.json()}).then(function(jj){if(jj.code===0){results.push({name:c.name,rate:jj.data.rate,riskLevel:jj.data.riskLevel,species:jj.data.speciesDistribution&&jj.data.speciesDistribution.length>0?(window.SN?window.SN[jj.data.speciesDistribution[0].species]||jj.data.speciesDistribution[0].name:jj.data.speciesDistribution[0].name):"?"})}})})).then(function(){results.sort(function(a,b){return b.rate-a.rate});results=results.slice(0,3);var html="";var medals=["gold","silver","bronze"];results.forEach(function(r,i){html+="<div class=\"top3-item\"><span class=\"top3-rank "+medals[i]+"\">"+(i+1)+"</span><span class=\"top3-name\">"+esc(r.name)+"</span><span class=\"top3-rate\">"+r.rate.toFixed(1)+"%</span><span class=\"top3-pest\">"+esc(r.species)+"</span></div>"});document.getElementById("top3List").innerHTML=html;if(results.length>0){var r=results[0];var s=r.riskLevel;var h=r.rate>70?"建议30小时内组织紧急防治":r.rate>50?"建议48小时内组织专业化防治":r.rate>30?"建议3天内完成药剂喷洒":"常规观测，暂无紧急处置需求";document.getElementById("recText").innerHTML="当前 <span class=\"hl2\">"+esc(r.name)+"</span> 的 <span class=\"hl\">"+esc(r.species)+"</span> 已达“ <span class=\"hl2\">"+s+"</span> ”级，"+h+"。";}})}).catch(function(){})}catch(e){}
@@ -361,8 +361,6 @@ window.addEventListener("resize",function(){if(PRC)PRC.resize()});
 }
 
 var _t=setInterval(function(){if(document.getElementById("predChart")&&PRC===null){initNew();clearInterval(_t)}},200);
-loadOverview();
-loadAlerts();
 try{fetch(BACKEND_URL+"/api/stats/region/all?range=1d").then(function(r){return r.json()}).then(function(j){if(j.code===0&&window.updateNewCharts)window.updateNewCharts(j.data,"1d")}).catch(function(){})}catch(e){}
 console.log("[Enhance] loaded");
 })();</script>
