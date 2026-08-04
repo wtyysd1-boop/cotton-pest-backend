@@ -112,6 +112,20 @@ function calcConfidence(sampleCount) {
   };
 }
 
+function isInfestedReport(report) {
+  return !!(report.pestInfo &&
+    report.pestInfo.species &&
+    report.pestInfo.species !== 'none' &&
+    report.pestInfo.confidence > 0.3);
+}
+
+function formatReportTime(timestamp) {
+  const d = new Date(timestamp);
+  const pad = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+    ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
 /**
  * GET /api/stats/region/:areaId?range=1d|3d|7d
  * 返回该区域指定时间窗口内的聚合统计
@@ -339,6 +353,137 @@ router.get('/focus-areas', async (req, res, next) => {
         count: a.count,
         level: a.count >= 10 ? '高风险' : a.count >= 5 ? '中风险' : '低风险'
       }))
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/stats/alerts
+ * 最近7天的最新5条风险事件
+ */
+router.get('/alerts', async (req, res, next) => {
+  try {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const reports = await PestReport.find(
+      { timestamp: { $gte: since } },
+      {
+        areaId: 1,
+        timestamp: 1,
+        'pestInfo.species': 1,
+        'pestInfo.confidence': 1,
+        'weather.temperature': 1,
+        'weather.humidity': 1
+      }
+    ).sort({ timestamp: -1 }).limit(5).lean();
+
+    const areaIds = reports.map(r => r.areaId);
+    const areas = areaIds.length
+      ? await Area.find({ adcode: { $in: areaIds } }, { name: 1, adcode: 1, _id: 0 }).lean()
+      : [];
+    const nameMap = new Map(areas.map(a => [a.adcode, a.name]));
+
+    const data = reports.map(report => {
+      const infested = isInfestedReport(report);
+      const species = report.pestInfo ? report.pestInfo.species : null;
+      const risk = assessRisk({
+        rate: infested ? 100 : 0,
+        avgTemperature: report.weather ? report.weather.temperature : null,
+        avgHumidity: report.weather ? report.weather.humidity : null,
+        trend: [],
+        speciesDistribution: infested ? [{ species }] : []
+      });
+
+      return {
+        time: formatReportTime(report.timestamp),
+        area: nameMap.get(report.areaId) || '区域' + report.areaId,
+        species: SPECIES_NAMES[species] || species || '未知',
+        riskLevel: risk.riskLevel,
+        confidence: report.pestInfo && report.pestInfo.confidence != null
+          ? report.pestInfo.confidence
+          : null
+      };
+    });
+
+    res.json({ code: 0, data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/stats/overview
+ * 监测状态汇总：累计上报、涉及区域、风险事件、数据完整率
+ */
+router.get('/overview', async (req, res, next) => {
+  try {
+    const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [totalReports, areaIds, riskEventCount, completenessResult] = await Promise.all([
+      PestReport.countDocuments({}),
+      PestReport.distinct('areaId'),
+      PestReport.countDocuments({
+        timestamp: { $gte: since7d },
+        'pestInfo.species': { $ne: 'none' },
+        'pestInfo.confidence': { $gt: 0.3 }
+      }),
+      PestReport.aggregate([
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            complete: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ne: ['$weather.temperature', null] },
+                      { $ne: ['$weather.humidity', null] },
+                      { $gt: [{ $size: { $ifNull: ['$location.coordinates', []] } }, 0] },
+                      { $ne: ['$pestInfo.species', null] }
+                    ]
+                  },
+                  1,
+                  0
+                ]
+              }
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            completeness: {
+              $round: [
+                {
+                  $multiply: [
+                    {
+                      $divide: [
+                        { $ifNull: ['$complete', 0] },
+                        { $cond: [{ $gt: ['$total', 0] }, '$total', 1] }
+                      ]
+                    },
+                    100
+                  ]
+                },
+                0
+              ]
+            }
+          }
+        }
+      ])
+    ]);
+
+    res.json({
+      code: 0,
+      data: {
+        totalReports,
+        areaCount: areaIds.length,
+        riskEventCount,
+        completeness: completenessResult.length ? completenessResult[0].completeness : 0
+      }
     });
   } catch (err) {
     next(err);
