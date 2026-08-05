@@ -16,8 +16,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;ba
 .col-left{background:rgba(0,0,0,0.15)}
 .col-map{position:relative;overflow:hidden}#mapContainer{width:100%;height:100%}
 .panel{border-radius:8px;background:var(--card);border:1px solid rgba(0,200,255,0.15);box-shadow:var(--shadow);flex-shrink:0}
-.ptitle{font-size:18px;font-weight:700;color:#d8edff;letter-spacing:1px;padding:10px 10px 12px;display:flex;align-items:center;gap:6px}
-.ptitle::before{font-size:18px;margin-right:8px;vertical-align:middle;color:#00d9ff;text-shadow:0 0 8px rgba(0,217,255,0.8)}
+.ptitle{font-size:20px;font-weight:700;color:#d8edff;letter-spacing:1px;padding:10px 10px 12px;display:flex;align-items:center;gap:6px;text-shadow:0 0 8px rgba(0,217,255,0.35)}
+.ptitle::before{font-size:24px;margin-right:10px;vertical-align:middle;color:inherit;text-shadow:0 0 10px currentColor}
 .title-monitor::before{content:"📊"}
 .title-area::before{content:"📍"}
 .title-top3::before{content:"⭐"}
@@ -30,6 +30,18 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;ba
 .title-trend7::before{content:"📈"}
 .title-predict::before{content:"◈"}
 .title-warn::before{content:"🔔"}
+.title-monitor{color:#00d9ff}
+.title-area{color:#00e5a0}
+.title-top3{color:#ffd166}
+.title-advice{color:#ff7b9c}
+.title-env{color:#7fdcff}
+.title-stats{color:#00d9ff}
+.title-species{color:#b57cff}
+.title-severity{color:#ff9f43}
+.title-trend{color:#36d1dc}
+.title-trend7{color:#36d1dc}
+.title-predict{color:#c084fc}
+.title-warn{color:#ff4d6d}
 .pbody{padding:0 10px 10px}
 .micro-row{display:flex;gap:6px}.micro-cell{flex:1;text-align:center;padding:6px 2px;background:rgba(0,212,255,0.03);border-radius:5px;border:1px solid rgba(0,212,255,0.06)}
 .micro-cell .val{font-size:32px;font-weight:700;font-family:JetBrains Mono,Cascadia Code,Fira Code,Consolas,monospace;letter-spacing:0.5px}
