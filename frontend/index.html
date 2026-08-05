@@ -16,13 +16,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;ba
 .col-left{background:rgba(0,0,0,0.15)}
 .col-map{position:relative;overflow:hidden}#mapContainer{width:100%;height:100%}
 .panel{border-radius:8px;background:var(--card);border:1px solid rgba(0,200,255,0.15);box-shadow:var(--shadow);flex-shrink:0}
-.ptitle{font-size:18px;font-weight:700;color:#d9ecff;letter-spacing:1px;padding:10px 10px 6px;display:flex;align-items:center;gap:6px}
-.ptitle::before{content:'';width:3px;height:12px;background:#00d9ff;border-radius:1px;box-shadow:0 0 6px rgba(0,217,255,0.6)}
+.ptitle{font-size:18px;font-weight:700;color:#d8edff;letter-spacing:1px;padding:10px 10px 12px;display:flex;align-items:center;gap:6px}
+.ptitle::before{content:'';width:3px;height:18px;background:#00d9ff;border-radius:2px;box-shadow:0 0 8px rgba(0,217,255,0.8)}
 .pbody{padding:0 10px 10px}
 .micro-row{display:flex;gap:6px}.micro-cell{flex:1;text-align:center;padding:6px 2px;background:rgba(0,212,255,0.03);border-radius:5px;border:1px solid rgba(0,212,255,0.06)}
 .micro-cell .val{font-size:32px;font-weight:700;font-family:JetBrains Mono,Cascadia Code,Fira Code,Consolas,monospace;letter-spacing:0.5px}
 .micro-cell .lbl{font-size:15px;color:#9fc4e8;margin-top:3px;white-space:nowrap}
-.micro-cell .val.cyan{color:var(--cyan)}.micro-cell .val.green{color:var(--green)}.micro-cell .val.amber{color:var(--amber)}
+.micro-cell .val.cyan{color:var(--cyan)}.micro-cell .val.green{color:var(--green)}.micro-cell .val.amber{color:var(--amber)}.micro-cell .val.purple{color:#c084fc}
 .wl-row{display:flex;gap:6px;padding:6px 10px 10px}.wl-cell{flex:1;text-align:center;padding:6px 0;background:rgba(0,212,255,0.02);border-radius:4px}
 .wl-cell .num{font-size:36px;font-weight:700;font-family:JetBrains Mono,Cascadia Code,Fira Code,Consolas,monospace}
 .wl-cell .lbl{font-size:20px;color:var(--dim);margin-top:1px}
@@ -113,7 +113,7 @@ height:600px;
 <div class="overview-row" style="padding:0 10px"><div class="micro-row">
 <div class="micro-cell"><div class="val cyan"><span id="microTotal">--</span></div><div class="lbl">累计上报</div></div>
 <div class="micro-cell"><div class="val green"><span id="microOnline">--</span></div><div class="lbl">涉及区域</div></div>
-<div class="micro-cell"><div class="val"><span id="microOffline">--</span></div><div class="lbl">风险事件</div></div>
+<div class="micro-cell"><div class="val purple"><span id="microOffline">--</span></div><div class="lbl">风险事件</div></div>
 <div class="micro-cell"><div class="val amber"><span id="microWarn">--</span></div><div class="lbl">数据完整率</div></div>
 </div><canvas id="mgCanvas" class="mini-gauge" width="44" height="44"></canvas></div>
 <div class="ptitle">重点监测区域</div>
