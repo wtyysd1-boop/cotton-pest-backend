@@ -10,14 +10,7 @@
 html,body{height:100%;overflow:hidden;font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:var(--bg);color:var(--text)}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;background:repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(0,212,255,0.02) 39px,rgba(0,212,255,0.02) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(0,212,255,0.02) 39px,rgba(0,212,255,0.02) 40px)}
 .header{height:86px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid rgba(0,212,255,0.1);background:linear-gradient(180deg,rgba(0,212,255,0.04) 0%,transparent 100%);flex-shrink:0}
-.header{position:relative}
 .header h1{font-size:32px;font-weight:700;background:linear-gradient(135deg,#e0e8f0 0%,var(--cyan) 40%,var(--magenta) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.sys-status{position:absolute;right:16px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:14px;background:rgba(6,14,36,0.85);border:1px solid rgba(0,217,255,0.25);border-radius:8px;padding:6px 14px;font-size:13px;color:#b8d6f5;box-shadow:0 0 12px rgba(0,217,255,0.12)}
-.sys-item{display:flex;align-items:center;gap:6px;white-space:nowrap}
-.sys-lbl{color:#7fdcff}
-.sys-item b{color:#e8f3ff;font-weight:600}
-.sys-dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:sysPulse 2.2s ease-in-out infinite}
-@keyframes sysPulse{0%,100%{opacity:1}50%{opacity:0.55}}
 .main-grid{display:grid;grid-template-columns:400px 1fr 400px;height:calc(100vh - 86px);overflow:hidden}
 .col-left,.col-right{display:flex;flex-direction:column;gap:10px;padding:10px;overflow-y:auto;overflow-x:hidden;height:100%}
 .col-left{background:rgba(0,0,0,0.15)}
@@ -152,6 +145,24 @@ height:140px
 .point-img-preview{margin-top:8px}
 .point-close{position:absolute;top:8px;right:10px;color:rgba(140,170,210,0.7);cursor:pointer;font-size:18px}
 .point-close:hover{color:#00d9ff}
+.risk-rank{position:absolute;left:12px;bottom:14px;z-index:150;width:230px;background:rgba(5,20,40,0.92);border:1px solid rgba(0,217,255,0.35);border-radius:10px;box-shadow:0 0 20px rgba(0,217,255,0.15);padding:10px 12px}
+.risk-rank-title{font-size:16px;font-weight:700;color:#00d9ff;text-shadow:0 0 8px rgba(0,217,255,0.5);margin-bottom:8px}
+.risk-rank-list{max-height:240px;overflow-y:auto}
+.risk-rank-item{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;transition:background .15s}
+.risk-rank-item:hover{background:rgba(0,217,255,0.12)}
+.risk-rank-no{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border-radius:50%}
+.risk-rank-no.rank-top1{background:rgba(255,209,102,0.18);color:#ffd166}
+.risk-rank-no.rank-top2{background:rgba(46,213,115,0.15);color:#2ed573}
+.risk-rank-no.rank-top3{background:rgba(0,217,255,0.15);color:#00d9ff}
+.risk-rank-no.rank-other{color:#9fc4e8}
+.risk-rank-main{flex:1;min-width:0}
+.risk-rank-name{font-size:14px;font-weight:600;color:#e5f3ff}
+.risk-rank-score{font-size:12px;color:#7fdcff}
+.risk-rank-level{font-size:12px;font-weight:700;padding:2px 6px;border-radius:5px;white-space:nowrap;background:var(--green);color:#08121f}
+.risk-rank-level.rank-high{background:var(--red);color:#fff}
+.risk-rank-level.rank-danger{background:#ff6b3d;color:#fff}
+.risk-rank-level.rank-mid{background:#ffd166;color:#08121f}
+.risk-rank-level.rank-low{background:var(--green);color:#08121f}
 .mini-gauge{display:none}
 .overview-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}.overview-row .micro-row{flex:1;margin-bottom:0}
 .footer{position:fixed;bottom:4px;left:50%;transform:translateX(-50%);z-index:50;font-size:11px;color:rgba(140,170,210,0.2);pointer-events:none}
@@ -159,9 +170,6 @@ height:140px
 .col-left::-webkit-scrollbar-track,.col-right::-webkit-scrollbar-track,.mon-list::-webkit-scrollbar-track,.warn-list::-webkit-scrollbar-track{background:transparent}
 .col-left::-webkit-scrollbar-thumb,.col-right::-webkit-scrollbar-thumb,.mon-list::-webkit-scrollbar-thumb,.warn-list::-webkit-scrollbar-thumb{background:rgba(0,212,255,0.2);border-radius:2px}
 @media(max-width:1200px){
-.sys-status{
-display:none;
-}
 .main-grid{
 grid-template-columns:1fr;
 overflow:auto;
@@ -177,7 +185,7 @@ height:600px;
 </style>
 </head>
 <body>
-<div class="header"><h1>棉卫士 · 湖南省棉花病虫害智能监测预测系统</h1><div class="sys-status"><div class="sys-item"><span class="sys-dot"></span><span id="sysState">系统运行正常</span></div><div class="sys-item"><span class="sys-lbl">数据更新时间</span><b id="sysTime">--</b></div><div class="sys-item"><span class="sys-lbl">监测区域</span><b id="sysArea">--</b></div><div class="sys-item"><span class="sys-lbl">数据来源</span><b>棉卫士智能监测平台</b></div></div></div>
+<div class="header"><h1>棉卫士 · 湖南省棉花病虫害智能监测预测系统</h1></div>
 <div class="main-grid">
 <div class="col-left">
 <div class="panel" id="panelA">
@@ -233,6 +241,7 @@ height:600px;
 <div class="point-row"><span>天气</span><b id="pmWeather">--</b></div>
 <div class="point-img-preview" id="pmImgPreview" style="display:none"></div>
 </div>
+<div class="risk-rank" id="riskRank"><div class="risk-rank-title">🏆 风险区域排行</div><div class="risk-rank-list" id="riskRankList"><div class="risk-rank-item"><span class="risk-rank-name">加载中...</span></div></div></div>
 <div id="mapContainer"></div>
 <div class="controls" id="timeGroup"><button class="pill active" data-range="1d">近1天</button><button class="pill" data-range="3d">近3天</button><button class="pill" data-range="7d">近1周</button></div>
 <div class="map-legend"><span style="font-size:11px">虫害发生率</span><div class="bar"></div><span style="font-size:11px">低</span><span style="font-size:11px">高</span><span style="opacity:0.3">|</span><span class="leg-dot" style="background:#ff2d78"></span><span style="font-size:11px">有虫害</span><span class="leg-dot" style="background:rgba(0,212,255,0.5)"></span><span style="font-size:11px">无虫害</span></div>
@@ -314,6 +323,36 @@ var pre=document.getElementById("pmImgPreview");
 if(imgUrl&&/^https?:\/\//i.test(imgUrl)){pre.innerHTML='<img src="'+imgUrl+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px;" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'图片加载失败\';">'}else{pre.innerHTML='<div style="color:#9fc4e8;font-size:14px;text-align:center;padding:14px 0">暂无图片</div>'}
 pre.style.display="block";el.style.display="block";
 }
+function escx(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}
+function selectAreaFromRanking(aid,name,center){
+curArea=String(aid);curPoint=null;
+document.getElementById("photoCard").style.display="none";
+var pm=document.getElementById("pointModal");if(pm)pm.style.display="none";
+var cd=document.getElementById("currentArea");if(cd)cd.textContent="当前查看："+name;
+if(center&&map){map.setZoomAndCenter(10,center)}
+polygons.forEach(function(p){var d=p.getExtData();if(String(d.adcode)===String(aid)){p.setOptions({strokeColor:"#00d9ff",strokeWeight:3,strokeOpacity:1})}else{p.setOptions({strokeColor:"rgba(0,212,255,0.4)",strokeWeight:1.5,strokeOpacity:0.9})}});
+ls(String(aid),curRange);
+lp(curRange);
+loadWeather(String(aid),name);
+loadAreaDetail(String(aid),name);
+}
+async function loadRiskRanking(){
+try{
+var j=await (await fetch(window.BACKEND_URL+"/api/areas")).json();
+if(j.code!==0)return;
+var cities=j.data||[];
+var list=await Promise.all(cities.map(async function(c){
+try{var rr=await (await fetch(window.BACKEND_URL+"/api/stats/region/"+c.id+"?range="+curRange)).json();return{id:c.id,name:c.name,center:c.center,score:rr.code===0?rr.data.riskScore:0,level:rr.code===0?(rr.data.riskLevel||"低风险"):"低风险"}}
+catch(err){return{id:c.id,name:c.name,center:c.center,score:0,level:"低风险"}}
+}));
+list.sort(function(a,b){return b.score-a.score});list=list.slice(0,5);
+var el=document.getElementById("riskRankList");if(!el)return;
+var html="";
+list.forEach(function(a,i){var rankCls=i===0?"rank-top1":i===1?"rank-top2":i===2?"rank-top3":"rank-other";var lvCls="rank-low";if(a.level==="极高风险")lvCls="rank-high";else if(a.level==="高风险"||a.level==="疑似高风险")lvCls="rank-danger";else if(a.level==="中风险")lvCls="rank-mid";html+='<div class="risk-rank-item" data-id="'+a.id+'" data-name="'+a.name+'" data-center="'+(a.center?a.center.join(","):"")+'"><span class="risk-rank-no '+rankCls+'">'+(i+1)+'</span><div class="risk-rank-main"><div class="risk-rank-name">'+escx(a.name)+'</div><div class="risk-rank-score">风险评分 '+a.score+'</div></div><span class="risk-rank-level '+lvCls+'">'+escx(a.level)+'</span></div>'});
+el.innerHTML=html;
+var rl=document.getElementById("riskRankList");
+if(rl&&!rl._bound){rl._bound=true;rl.addEventListener("click",function(ev){var t=ev.target;while(t&&t!==rl&&!(t.getAttribute&&t.getAttribute("data-id"))){t=t.parentNode}if(!t||t===rl)return;selectAreaFromRanking(t.getAttribute("data-id"),t.getAttribute("data-name"),t.getAttribute("data-center")?t.getAttribute("data-center").split(",").map(parseFloat):null)})}
+}catch(e){console.error(e)}}
 function init(){
 SC=echarts.init(document.getElementById("speciesChart"));
 SeC=echarts.init(document.getElementById("severityChart"));
@@ -332,7 +371,7 @@ window._amap=map;
 AMap.plugin(["AMap.ToolBar"],function(){map.addControl(new AMap.ToolBar({position:"LT"}))});
 map.on("complete",function(){ld().then(function(){document.getElementById("loading").style.display="none"})});
 }
-async function ld(){var r=await fetch(window.BACKEND_URL+"/api/areas");var j=await r.json();if(j.code!==0)return;var c=j.data;c.forEach(function(x){cityMap[x.name]=x;cityOrder.push(x.name)});var sy=document.getElementById("sysTime");if(sy){var nd=new Date();sy.textContent=nd.getFullYear()+"-"+String(nd.getMonth()+1).padStart(2,"0")+"-"+String(nd.getDate()).padStart(2,"0")+" "+String(nd.getHours()).padStart(2,"0")+":"+String(nd.getMinutes()).padStart(2,"0")}var sa=document.getElementById("sysArea");if(sa)sa.textContent="湖南省"+c.length+"个市";await lg(c);await lp(curRange);await ls("all",curRange);loadFocusAreas();loadAdvice("all");loadWeather("all","湖南省")}
+async function ld(){var r=await fetch(window.BACKEND_URL+"/api/areas");var j=await r.json();if(j.code!==0)return;var c=j.data;c.forEach(function(x){cityMap[x.name]=x;cityOrder.push(x.name)});await lg(c);await lp(curRange);await ls("all",curRange);loadFocusAreas();loadAdvice("all");loadWeather("all","湖南省");loadRiskRanking()}
 async function lg(cities){var r=await fetch("assets/hunan.json");var geo=await r.json();geo.features.forEach(function(f){var nm=f.properties.name;var ci=cityMap[nm];
 
 if(!ci){
