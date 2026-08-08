@@ -94,9 +94,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;ba
 .env-item .lbl{font-size:22px;color:var(--dim)}.env-item .val{font-size:32px;font-weight:700;font-family:JetBrains Mono,Cascadia Code,Fira Code,Consolas,monospace}
 .env-item .val.cyan{color:var(--cyan)}.env-item .val.green{color:var(--green)}.env-item .val.magenta{color:var(--magenta)}
 .env-item .unit{font-size:18px;color:var(--dim);margin-left:2px}
-.kpi-row{display:flex;gap:8px;padding:6px 10px 10px}.kpi-cell{flex:1;text-align:center;padding:10px 4px;background:rgba(0,212,255,0.03);border-radius:5px;border:1px solid rgba(0,212,255,0.06)}
-.kpi-cell .val{font-size:42px;font-weight:700;font-family:JetBrains Mono,Cascadia Code,Fira Code,Consolas,monospace}
-.kpi-cell .lbl{font-size:20px;color:var(--dim);margin-top:3px}
+.kpi-row{display:flex;align-items:stretch;gap:8px;padding:4px 10px 12px}
+.kpi-cell{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:12px 8px;background:rgba(0,212,255,0.03);border-radius:6px;border:1px solid rgba(0,212,255,0.12);min-height:96px}
+.kpi-cell .val{font-size:34px;font-weight:700;font-family:JetBrains Mono,Cascadia Code,Fira Code,Consolas,monospace;line-height:1.2;margin-bottom:8px;white-space:nowrap}
+.kpi-cell .lbl{font-size:15px;color:#9fc4e8;line-height:1.4;white-space:nowrap}
 .kpi-cell .val.cyan{color:var(--cyan)}.kpi-cell .val.amber{color:var(--amber)}
 .chart-box{width:100%}.sc{width:100%;height:170px}.hc{width:100%;height:110px}.pc{
 width:100%;
@@ -247,7 +248,7 @@ height:600px;
 <div class="map-legend"><span style="font-size:11px">虫害发生率</span><div class="bar"></div><span style="font-size:11px">低</span><span style="font-size:11px">高</span><span style="opacity:0.3">|</span><span class="leg-dot" style="background:#ff2d78"></span><span style="font-size:11px">有虫害</span><span class="leg-dot" style="background:rgba(0,212,255,0.5)"></span><span style="font-size:11px">无虫害</span></div>
 </div>
 <div class="col-right">
-<div class="panel" id="rightPanelA" style="height:180px;overflow:hidden">
+<div class="panel" id="rightPanelA" style="height:210px;overflow:hidden">
 <div class="ptitle title-stats">虫情统计</div>
 <div class="current-area" id="currentArea">当前查看：湖南省</div>
 <div class="kpi-row"><div class="kpi-cell"><div class="val cyan"><span id="kpiRate">--</span><span style="font-size:13px">%</span></div><div class="lbl">虫害发生概率</div></div><div class="kpi-cell"><div class="val amber"><span id="kpiTotal">--</span></div><div class="lbl">上报总量</div></div></div>
