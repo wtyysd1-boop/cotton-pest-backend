@@ -339,14 +339,9 @@ loadAreaDetail(String(aid),name);
 }
 async function loadRiskRanking(){
 try{
-var j=await (await fetch(window.BACKEND_URL+"/api/areas")).json();
+var j=await (await fetch(window.BACKEND_URL+"/api/stats/focus-areas?limit=5&sort=risk")).json();
 if(j.code!==0)return;
-var cities=j.data||[];
-var list=await Promise.all(cities.map(async function(c){
-try{var rr=await (await fetch(window.BACKEND_URL+"/api/stats/region/"+c.id+"?range="+curRange)).json();return{id:c.id,name:c.name,center:c.center,score:rr.code===0?rr.data.riskScore:0,level:rr.code===0?(rr.data.riskLevel||"低风险"):"低风险"}}
-catch(err){return{id:c.id,name:c.name,center:c.center,score:0,level:"低风险"}}
-}));
-list.sort(function(a,b){return b.score-a.score});list=list.slice(0,5);
+var list=(j.data||[]).map(function(a){var c=cityMap[a.area];return{id:a.areaId,name:a.area,center:a.center||(c&&c.center?c.center:null),score:a.riskScore,level:a.riskLevel}});
 var el=document.getElementById("riskRankList");if(!el)return;
 var html="";
 list.forEach(function(a,i){var rankCls=i===0?"rank-top1":i===1?"rank-top2":i===2?"rank-top3":"rank-other";var lvCls="rank-low";if(a.level==="极高风险")lvCls="rank-high";else if(a.level==="高风险"||a.level==="疑似高风险")lvCls="rank-danger";else if(a.level==="中风险")lvCls="rank-mid";html+='<div class="risk-rank-item" data-id="'+a.id+'" data-name="'+a.name+'" data-center="'+(a.center?a.center.join(","):"")+'"><span class="risk-rank-no '+rankCls+'">'+(i+1)+'</span><div class="risk-rank-main"><div class="risk-rank-name">'+escx(a.name)+'</div><div class="risk-rank-score">风险评分 '+a.score+'</div></div><span class="risk-rank-level '+lvCls+'">'+escx(a.level)+'</span></div>'});
