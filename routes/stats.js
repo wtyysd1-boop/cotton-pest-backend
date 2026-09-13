@@ -127,6 +127,25 @@ function calcConfidence(sampleCount) {
   };
 }
 
+function calculateRiskAssessment({ rate, avgTemperature, avgHumidity, trend, speciesDistribution, sampleCount }) {
+  const risk = calculateRiskScore({ rate, avgTemperature, avgHumidity, trend, speciesDistribution });
+  const confidenceInfo = calcConfidence(sampleCount);
+
+  let riskLevel = risk.level;
+  if (sampleCount < 3 && (riskLevel === '高风险' || riskLevel === '极高风险')) {
+    riskLevel = '疑似高风险';
+  }
+
+  return {
+    riskScore: risk.score,
+    riskLevel,
+    riskReasons: risk.reasons,
+    confidence: confidenceInfo.confidence,
+    confidenceDescription: confidenceInfo.description,
+    sampleCount
+  };
+}
+
 function isInfestedReport(report) {
   return !!(report.pestInfo &&
     report.pestInfo.species &&
@@ -272,22 +291,15 @@ router.get('/region/:areaId', async (req, res, next) => {
     ];
     const trendData = await PestReport.aggregate(trendPipeline);
 
-    const risk = calculateRiskScore({
+    const sampleCount = base.total;
+    const assessment = calculateRiskAssessment({
       rate: base.rate,
       avgTemperature: base.avgTemperature,
       avgHumidity: base.avgHumidity,
       trend: trendData,
-      speciesDistribution: speciesDist
+      speciesDistribution: speciesDist,
+      sampleCount
     });
-
-    const sampleCount = base.total;
-    const confidenceInfo = calcConfidence(sampleCount);
-
-    // 样本过少时，最高只显示疑似高风险，避免少量样本导致误报
-    let riskLevel = risk.level;
-    if (sampleCount < 3 && (riskLevel === '高风险' || riskLevel === '极高风险')) {
-      riskLevel = '疑似高风险';
-    }
 
     res.json({
       code: 0,
@@ -297,12 +309,12 @@ router.get('/region/:areaId', async (req, res, next) => {
         total: base.total,
         infested: base.infested,
         rate: parseFloat(base.rate.toFixed(2)),
-        riskScore: risk.score,
-        riskLevel,
-        riskReasons: risk.reasons,
+        riskScore: assessment.riskScore,
+        riskLevel: assessment.riskLevel,
+        riskReasons: assessment.riskReasons,
         sampleCount,
-        confidence: confidenceInfo.confidence,
-        confidenceDescription: confidenceInfo.description,
+        confidence: assessment.confidence,
+        confidenceDescription: assessment.confidenceDescription,
         avgTemperature: base.avgTemperature,
         avgHumidity: base.avgHumidity,
         speciesDistribution: speciesDist.map(s => ({
@@ -345,6 +357,8 @@ const SPECIES_NAMES = {
 router.get('/focus-areas', async (req, res, next) => {
   try {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 3, 1), 20);
+    const sortByRisk = req.query.sort === 'risk';
     const matchStage = { timestamp: { $gte: since } };
     const infestedCond = {
       $and: [
@@ -440,46 +454,55 @@ router.get('/focus-areas', async (req, res, next) => {
     const topAreas = baseStats
       .map(item => {
         const speciesDist = speciesByArea.get(item.areaId) || [];
-        const risk = calculateRiskScore({
+        const assessment = calculateRiskAssessment({
           rate: item.rate,
           avgTemperature: item.avgTemperature,
           avgHumidity: item.avgHumidity,
           trend: trendByArea.get(item.areaId) || [],
-          speciesDistribution: speciesDist
+          speciesDistribution: speciesDist,
+          sampleCount: item.total
         });
-
-        let riskLevel = risk.level;
-        if (item.total < 3 && (riskLevel === '高风险' || riskLevel === '极高风险')) {
-          riskLevel = '疑似高风险';
-        }
 
         return {
           areaId: String(item.areaId),
           reportCount: item.total,
           count: item.total,
-          riskScore: risk.score,
-          riskLevel,
+          riskScore: assessment.riskScore,
+          riskLevel: assessment.riskLevel,
+          riskReasons: assessment.riskReasons,
+          sampleCount: assessment.sampleCount,
+          confidence: assessment.confidence,
+          confidenceDescription: assessment.confidenceDescription,
           mainSpecies: speciesDist.length
             ? (SPECIES_NAMES[speciesDist[0].species] || speciesDist[0].species)
             : '健康',
-          reasons: risk.reasons
+          reasons: assessment.riskReasons
         };
       })
-      .sort((a, b) => b.riskScore - a.riskScore || b.reportCount - a.reportCount)
-      .slice(0, 3);
+      .sort((a, b) => sortByRisk
+        ? (b.riskScore - a.riskScore || b.reportCount - a.reportCount)
+        : (b.reportCount - a.reportCount || b.riskScore - a.riskScore))
+      .slice(0, limit);
 
     const areaIds = topAreas.map(a => Number(a.areaId));
     const areas = areaIds.length
-      ? await Area.find({ adcode: { $in: areaIds } }, { name: 1, adcode: 1, _id: 0 }).lean()
+      ? await Area.find({ adcode: { $in: areaIds } }, { name: 1, adcode: 1, 'center.coordinates': 1, _id: 0 }).lean()
       : [];
-    const nameMap = new Map(areas.map(a => [String(a.adcode), a.name]));
+    const areaMap = new Map(areas.map(a => [String(a.adcode), {
+      name: a.name,
+      center: a.center && Array.isArray(a.center.coordinates) ? a.center.coordinates : null
+    }]));
 
     res.json({
       code: 0,
-      data: topAreas.map(a => ({
-        ...a,
-        area: nameMap.get(a.areaId) || '区域' + a.areaId
-      }))
+      data: topAreas.map(a => {
+        const info = areaMap.get(a.areaId) || {};
+        return {
+          ...a,
+          area: info.name || '区域' + a.areaId,
+          center: info.center || null
+        };
+      })
     });
   } catch (err) {
     next(err);
