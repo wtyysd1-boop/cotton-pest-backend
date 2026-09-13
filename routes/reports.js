@@ -84,17 +84,7 @@ router.post('/submit', rateLimit({ max: 20 }), requireApiKey, async (req, res, n
     }
 
     // 根据坐标自动获取天气数据（如失败则降级为 null/未知）
-    try {
-
-  report.weather = await fetchWeather(lng, lat);
-
-} catch(e) {
-
-  console.log("天气获取失败:", e);
-
-  report.weather = null;
-
-}
+    const weather = await fetchWeather(lng, lat, parsedTimestamp);
 
     const report = new PestReport({
       areaId: areaIdNum,
@@ -261,23 +251,7 @@ router.post('/miniapp', rateLimit({ max: 60 }), requireApiKey, async (req, res, 
       return res.status(400).json({ code: 400, message: '该点不属于湖南省，不纳入统计' });
     }
     const areaId = Number(cityInfo.adcode);
-    let timestamp;
-
-if(time){
-
-  // 小程序传的是北京时间
-  timestamp = new Date(
-    time.replace(
-      ' ',
-      'T'
-    ) + '+08:00'
-  );
-
-}else{
-
-  timestamp = new Date();
-
-}
+    const timestamp = time ? new Date(time) : new Date();
     if (isNaN(timestamp.getTime())) {
       return res.status(400).json({ code: 400, message: 'time 格式不正确' });
     }
@@ -297,7 +271,7 @@ if(time){
       imageUrl: normalizeImageUrl(photo),
       processingStatus: 'completed'
     });
-    report.weather = await fetchWeather(lng, lat);
+    report.weather = await fetchWeather(lng, lat, timestamp);
     const saved = await report.save();
     res.json({ code: 0, message: '导入成功', data: { id: saved._id.toString() } });
   } catch (err) {
