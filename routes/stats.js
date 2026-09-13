@@ -755,9 +755,17 @@ router.get('/overview', async (req, res, next) => {
 router.get('/trend', async (req, res, next) => {
   try {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const { areaId } = req.query;
+    const matchStage = { timestamp: { $gte: since } };
+    if (areaId && areaId !== 'all') {
+      const numericAreaId = parseInt(areaId, 10);
+      if (!isNaN(numericAreaId)) {
+        matchStage.areaId = numericAreaId;
+      }
+    }
 
     const grouped = await PestReport.aggregate([
-      { $match: { timestamp: { $gte: since } } },
+      { $match: matchStage },
       {
         $group: {
           _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
