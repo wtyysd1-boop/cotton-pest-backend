@@ -316,9 +316,9 @@ document.getElementById("pmConf").textContent=conf;
 var lvEl=document.getElementById("pmLevel");lvEl.textContent=lv;lvEl.className="point-level "+lvCls;
 document.getElementById("pmArea").textContent=rn;
 document.getElementById("pmTime").textContent=tm;
-document.getElementById("pmTemp").textContent=d.temperature!=null?d.temperature+"℃":"暂无记录";
-document.getElementById("pmHum").textContent=d.humidity!=null?d.humidity+"%":"暂无记录";
-document.getElementById("pmWeather").textContent=d.condition||"暂无记录";
+document.getElementById("pmTemp").textContent=d.temperature!=null?d.temperature+"℃":"暂无历史天气数据";
+document.getElementById("pmHum").textContent=d.humidity!=null?d.humidity+"%":"暂无历史天气数据";
+document.getElementById("pmWeather").textContent=(d.condition&&d.condition!=="未知")?d.condition:"暂无历史天气数据";
 var imgUrl=d.imageUrl||d.image_url||"";
 var pre=document.getElementById("pmImgPreview");
 if(imgUrl&&/^https?:\/\//i.test(imgUrl)){pre.innerHTML='<img src="'+imgUrl+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px;" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'图片加载失败\';">'}else{pre.innerHTML='<div style="color:#9fc4e8;font-size:14px;text-align:center;padding:14px 0">暂无图片</div>'}
