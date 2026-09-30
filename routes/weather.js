@@ -42,7 +42,7 @@ router.get('/area/:areaId', async (req, res) => {
 
     const weather = await fetchOpenMeteoCurrent(lng, lat);
     if (!weather) {
-      return res.json({ code: 1, message: '暂无天气数据' });
+      return res.json({ code: 1, message: '暂无实时天气数据' });
     }
 
     res.json({
