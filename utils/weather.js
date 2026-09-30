@@ -5,11 +5,13 @@ const path = require('path');
 const LOG_FILE = path.join(__dirname, '..', 'logs', 'weather-errors.log');
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const FAILURE_COOLDOWN_MS = 60 * 1000;
+const GLOBAL_UPSTREAM_COOLDOWN_MS = 10 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
 
 const weatherCache = new Map();
 const failureCache = new Map();
 const inFlightRequests = new Map();
+let globalUpstreamCooldownUntil = 0;
 
 function ensureLogDir() {
   const dir = path.dirname(LOG_FILE);
@@ -55,7 +57,7 @@ function readCache(key) {
   if (!entry) return null;
 
   if (Date.now() - entry.timestamp < CACHE_TTL_MS) {
-    console.log('[Weather] cache hit key=' + key);
+    console.log('[Weather] using cached weather key=' + key);
     return { ...entry.data };
   }
 
@@ -90,9 +92,37 @@ function recordFailure(key, err) {
   pruneMap(failureCache);
 }
 
+function globalCooldownActive() {
+  const now = Date.now();
+  if (globalUpstreamCooldownUntil && now >= globalUpstreamCooldownUntil) {
+    console.log('[Weather] global upstream cooldown expired');
+    globalUpstreamCooldownUntil = 0;
+  }
+  return globalUpstreamCooldownUntil > now;
+}
+
+function activateGlobalCooldown(err) {
+  const status = err && err.response && err.response.status;
+  if (status !== 429) return;
+
+  globalUpstreamCooldownUntil = Date.now() + GLOBAL_UPSTREAM_COOLDOWN_MS;
+  console.warn('[Weather] Open-Meteo 429');
+  console.warn(
+    '[Weather] global upstream cooldown activated until ' +
+    new Date(globalUpstreamCooldownUntil).toISOString()
+  );
+}
+
 async function getWithCache(key, requestFn) {
   const cached = readCache(key);
   if (cached) return cached;
+
+  if (globalCooldownActive()) {
+    console.warn('[Weather] global cooldown active, skip upstream');
+    const err = new Error('Open-Meteo global upstream cooldown active');
+    err.code = 'OPEN_METEO_GLOBAL_COOLDOWN';
+    throw err;
+  }
 
   if (failureCooldownActive(key)) {
     console.warn('[Weather] request cooldown active key=' + key);
@@ -113,6 +143,7 @@ async function getWithCache(key, requestFn) {
       return { ...data };
     })
     .catch(err => {
+      activateGlobalCooldown(err);
       recordFailure(key, err);
       throw err;
     })
@@ -302,6 +333,10 @@ async function fetchOpenMeteoCurrent(lng, lat) {
     if (!isWeatherAvailable(weather)) return null;
     return weather;
   } catch (err) {
+    if (err.code === 'OPEN_METEO_GLOBAL_COOLDOWN') {
+      console.warn('[Weather] no cached weather available key=' + key);
+      return null;
+    }
     logOpenMeteoFailure(key || coordinateKey(lng, lat), err);
     return null;
   }
@@ -334,6 +369,10 @@ async function fetchWeather(lng, lat, timestamp) {
     });
     return weather;
   } catch (err) {
+    if (err.code === 'OPEN_METEO_GLOBAL_COOLDOWN') {
+      console.warn('[Weather] no cached weather available key=' + key);
+      return { temperature: null, humidity: null, condition: '未知' };
+    }
     logOpenMeteoFailure(key || coordinateKey(lng, lat), err);
     return { temperature: null, humidity: null, condition: '未知' };
   }
