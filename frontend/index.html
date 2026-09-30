@@ -273,7 +273,7 @@ height:600px;
 window.BACKEND_URL="https://cotton-pest-backend.onrender.com";
 
 var curArea="all",curRange="1d",curPoint=null;var regionReqSeq=0;
-var currentReport=null,weatherMode="area",weatherRequestCache={},WEATHER_CACHE_TTL=10*60*1000;
+var currentReport=null,weatherMode="area",weatherRequestCache={};
 var map=null,polygons=[],markers=[],cityMap={},cityOrder=[];
 var SC,SeC,TC;
 var PC={
@@ -298,9 +298,8 @@ function getAreaWeather(aid){
 aid=String(aid);
 var cached=weatherRequestCache[aid];
 if(cached&&cached.promise)return cached.promise;
-if(cached&&cached.data&&Date.now()-cached.timestamp<WEATHER_CACHE_TTL){console.log("weather cache hit:"+aid);return Promise.resolve({code:0,data:cached.data})}
-var request=fetch(window.BACKEND_URL+"/api/weather/area/"+aid).then(function(r){return r.json()}).then(function(j){if(Number(j.code)===0){weatherRequestCache[aid]={data:j.data||{},timestamp:Date.now(),promise:null}}else{delete weatherRequestCache[aid]}return j}).catch(function(e){delete weatherRequestCache[aid];throw e});
-weatherRequestCache[aid]={data:null,timestamp:0,promise:request};
+var request=fetch(window.BACKEND_URL+"/api/weather/area/"+aid).then(function(r){return r.json()}).finally(function(){delete weatherRequestCache[aid]});
+weatherRequestCache[aid]={promise:request};
 return request;
 }
 function loadWeather(aid,name){
