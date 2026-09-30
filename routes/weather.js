@@ -37,7 +37,7 @@ router.get('/area/:areaId', async (req, res) => {
     }
 
     if (lat == null || lng == null) {
-      return res.json({ code: 1, message: '天气获取失败' });
+      return res.json({ code: 1, message: '暂无实时天气数据' });
     }
 
     const weather = await fetchOpenMeteoCurrent(lng, lat);
@@ -52,7 +52,10 @@ router.get('/area/:areaId', async (req, res) => {
         temperature: weather.temperature,
         humidity: weather.humidity,
         weather: weather.weather,
-        updateTime: weather.updateTime
+        updateTime: weather.updateTime,
+        cached: weather.cached === true,
+        stale: weather.stale === true,
+        cacheTime: weather.cacheTime || null
       }
     });
   } catch (err) {
