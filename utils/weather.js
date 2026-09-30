@@ -57,13 +57,28 @@ function readCache(key) {
   if (!entry) return null;
 
   if (Date.now() - entry.timestamp < CACHE_TTL_MS) {
-    console.log('[Weather] using cached weather key=' + key);
-    return { ...entry.data };
+    console.log('[Weather] cache hit key=' + key);
+    return {
+      ...entry.data,
+      cached: true,
+      stale: false,
+      cacheTime: new Date(entry.timestamp).toISOString()
+    };
   }
 
-  weatherCache.delete(key);
   console.log('[Weather] cache expired key=' + key);
   return null;
+}
+
+function readLastSuccessfulCache(key) {
+  const entry = weatherCache.get(key);
+  if (!entry) return null;
+  return {
+    ...entry.data,
+    cached: true,
+    stale: true,
+    cacheTime: new Date(entry.timestamp).toISOString()
+  };
 }
 
 function writeCache(key, data) {
@@ -118,7 +133,12 @@ async function getWithCache(key, requestFn) {
   if (cached) return cached;
 
   if (globalCooldownActive()) {
-    console.warn('[Weather] global cooldown active, skip upstream');
+    console.warn('[Weather] global cooldown active');
+    const lastSuccessful = readLastSuccessfulCache(key);
+    if (lastSuccessful) {
+      console.warn('[Weather] using last successful cache key=' + key);
+      return lastSuccessful;
+    }
     const err = new Error('Open-Meteo global upstream cooldown active');
     err.code = 'OPEN_METEO_GLOBAL_COOLDOWN';
     throw err;
@@ -139,12 +159,20 @@ async function getWithCache(key, requestFn) {
 
   const request = requestFn()
     .then(data => {
+      console.log('[Weather] Open-Meteo success key=' + key);
       writeCache(key, data);
-      return { ...data };
+      return { ...data, cached: false, stale: false, cacheTime: null };
     })
     .catch(err => {
       activateGlobalCooldown(err);
       recordFailure(key, err);
+      if (err && err.response && err.response.status === 429) {
+        const lastSuccessful = readLastSuccessfulCache(key);
+        if (lastSuccessful) {
+          console.warn('[Weather] using last successful cache key=' + key);
+          return lastSuccessful;
+        }
+      }
       throw err;
     })
     .finally(() => {
@@ -333,7 +361,8 @@ async function fetchOpenMeteoCurrent(lng, lat) {
     if (!isWeatherAvailable(weather)) return null;
     return weather;
   } catch (err) {
-    if (err.code === 'OPEN_METEO_GLOBAL_COOLDOWN') {
+    if (err.code === 'OPEN_METEO_GLOBAL_COOLDOWN' ||
+        (err.response && err.response.status === 429)) {
       console.warn('[Weather] no cached weather available key=' + key);
       return null;
     }
@@ -369,7 +398,8 @@ async function fetchWeather(lng, lat, timestamp) {
     });
     return weather;
   } catch (err) {
-    if (err.code === 'OPEN_METEO_GLOBAL_COOLDOWN') {
+    if (err.code === 'OPEN_METEO_GLOBAL_COOLDOWN' ||
+        (err.response && err.response.status === 429)) {
       console.warn('[Weather] no cached weather available key=' + key);
       return { temperature: null, humidity: null, condition: '未知' };
     }
