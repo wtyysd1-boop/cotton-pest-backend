@@ -3,6 +3,13 @@ const fs = require('fs');
 const path = require('path');
 
 const LOG_FILE = path.join(__dirname, '..', 'logs', 'weather-errors.log');
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const FAILURE_COOLDOWN_MS = 60 * 1000;
+const MAX_CACHE_ENTRIES = 500;
+
+const weatherCache = new Map();
+const failureCache = new Map();
+const inFlightRequests = new Map();
 
 function ensureLogDir() {
   const dir = path.dirname(LOG_FILE);
@@ -16,6 +23,123 @@ function logError(message) {
   } catch (e) {
     console.error('[Weather] 写入日志失败:', e.message);
   }
+}
+
+function normalizeCoordinates(lng, lat) {
+  const longitude = Number(lng);
+  const latitude = Number(lat);
+  if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+    throw new Error('Invalid weather coordinates');
+  }
+  return {
+    longitude: longitude.toFixed(4),
+    latitude: latitude.toFixed(4)
+  };
+}
+
+function coordinateKey(lng, lat) {
+  const coords = normalizeCoordinates(lng, lat);
+  return coords.longitude + ',' + coords.latitude;
+}
+
+function pruneMap(map) {
+  while (map.size > MAX_CACHE_ENTRIES) {
+    const oldest = map.keys().next().value;
+    if (oldest === undefined) break;
+    map.delete(oldest);
+  }
+}
+
+function readCache(key) {
+  const entry = weatherCache.get(key);
+  if (!entry) return null;
+
+  if (Date.now() - entry.timestamp < CACHE_TTL_MS) {
+    console.log('[Weather] cache hit key=' + key);
+    return { ...entry.data };
+  }
+
+  weatherCache.delete(key);
+  console.log('[Weather] cache expired key=' + key);
+  return null;
+}
+
+function writeCache(key, data) {
+  weatherCache.set(key, {
+    data: { ...data },
+    timestamp: Date.now()
+  });
+  pruneMap(weatherCache);
+  console.log('[Weather] cached key=' + key + ' ttlMinutes=' + Math.round(CACHE_TTL_MS / 60000));
+}
+
+function failureCooldownActive(key) {
+  const entry = failureCache.get(key);
+  if (!entry) return false;
+  if (Date.now() - entry.timestamp < entry.cooldownMs) return true;
+  failureCache.delete(key);
+  return false;
+}
+
+function recordFailure(key, err) {
+  const status = err && err.response && err.response.status;
+  failureCache.set(key, {
+    timestamp: Date.now(),
+    cooldownMs: status === 429 ? FAILURE_COOLDOWN_MS : Math.min(FAILURE_COOLDOWN_MS, 15000)
+  });
+  pruneMap(failureCache);
+}
+
+async function getWithCache(key, requestFn) {
+  const cached = readCache(key);
+  if (cached) return cached;
+
+  if (failureCooldownActive(key)) {
+    console.warn('[Weather] request cooldown active key=' + key);
+    throw new Error('Weather request cooldown active');
+  }
+
+  if (inFlightRequests.has(key)) {
+    console.log('[Weather] in-flight request reused key=' + key);
+    return inFlightRequests.get(key);
+  }
+
+  console.log('[Weather] cache miss key=' + key);
+  console.log('[Weather] requesting upstream key=' + key);
+
+  const request = requestFn()
+    .then(data => {
+      writeCache(key, data);
+      return { ...data };
+    })
+    .catch(err => {
+      recordFailure(key, err);
+      throw err;
+    })
+    .finally(() => {
+      inFlightRequests.delete(key);
+    });
+
+  inFlightRequests.set(key, request);
+  return request;
+}
+
+function logOpenMeteoFailure(key, err) {
+  const status = err && err.response && err.response.status;
+  const detail = err && err.message ? err.message : String(err);
+  if (status === 429) {
+    console.warn('[Weather] Open-Meteo HTTP 429 key=' + key);
+  } else {
+    console.warn('[Weather] Open-Meteo request failed key=' + key + ' error=' + detail);
+  }
+  logError('key=' + key + ' status=' + (status || '') + ' error=' + detail);
+}
+
+function isWeatherAvailable(weather) {
+  return !!weather &&
+    weather.temperature != null &&
+    weather.humidity != null &&
+    weather.condition !== '未知';
 }
 
 function weatherText(code) {
@@ -89,7 +213,7 @@ function pickHour(hourly, targetKey) {
  * @param {Date|string} timestamp 上报时间，缺省为当前时间
  * @returns {Promise<{temperature:number|null,humidity:number|null,condition:string}>}
  */
-async function fetchWeather(lng, lat, timestamp) {
+async function fetchWeatherUncached(lng, lat, timestamp) {
   if (!Number.isFinite(lng) || !Number.isFinite(lat) ||
       lng < -180 || lng > 180 || lat < -90 || lat > 90) {
     console.warn('[Weather] 经纬度非法，跳过天气获取:', lng, lat);
@@ -132,6 +256,7 @@ async function fetchWeather(lng, lat, timestamp) {
       };
     } catch (err) {
       logError(api + ' day=' + day + ' lat=' + lat + ' lng=' + lng + ' error=' + err.message);
+      if (err.response && err.response.status === 429) throw err;
     }
   }
 
@@ -139,4 +264,82 @@ async function fetchWeather(lng, lat, timestamp) {
   return { temperature: null, humidity: null, condition: '未知' };
 }
 
-module.exports = { fetchWeather };
+async function requestOpenMeteoCurrent(lng, lat) {
+  const resp = await axios.get('https://api.open-meteo.com/v1/forecast', {
+    params: {
+      latitude: lat,
+      longitude: lng,
+      current: 'temperature_2m,relative_humidity_2m,weather_code',
+      timezone: 'Asia/Shanghai'
+    },
+    timeout: 8000
+  });
+  const current = resp.data && resp.data.current;
+  if (!current) {
+    throw new Error('Open-Meteo response missing current weather');
+  }
+
+  const time = current.time || '';
+  return {
+    temperature: current.temperature_2m != null ? Number(current.temperature_2m) : null,
+    humidity: current.relative_humidity_2m != null ? Number(current.relative_humidity_2m) : null,
+    condition: weatherText(current.weather_code),
+    weather: weatherText(current.weather_code),
+    updateTime: time ? time.replace('T', ' ').slice(0, 16) : ''
+  };
+}
+
+async function fetchOpenMeteoCurrent(lng, lat) {
+  if (!Number.isFinite(Number(lng)) || !Number.isFinite(Number(lat))) {
+    console.warn('[Weather] Open-Meteo invalid coordinates:', lng, lat);
+    return null;
+  }
+
+  let key;
+  try {
+    key = 'current:' + coordinateKey(lng, lat);
+    const weather = await getWithCache(key, () => requestOpenMeteoCurrent(lng, lat));
+    if (!isWeatherAvailable(weather)) return null;
+    return weather;
+  } catch (err) {
+    logOpenMeteoFailure(key || coordinateKey(lng, lat), err);
+    return null;
+  }
+}
+
+async function fetchWeather(lng, lat, timestamp) {
+  if (!Number.isFinite(Number(lng)) || !Number.isFinite(Number(lat))) {
+    console.warn('[Weather] Open-Meteo invalid coordinates:', lng, lat);
+    return { temperature: null, humidity: null, condition: '未知' };
+  }
+
+  let key;
+  try {
+    const at = timestamp ? new Date(timestamp) : new Date();
+    if (Number.isNaN(at.getTime())) {
+      return { temperature: null, humidity: null, condition: '未知' };
+    }
+    const parts = shanghaiParts(at);
+    const day = parts.year + '-' + parts.month + '-' + parts.day;
+    const hour = parts.hour === '24' ? '00' : parts.hour;
+    key = 'history:' + coordinateKey(lng, lat) + ':' + day + 'T' + hour;
+
+    const weather = await getWithCache(key, () => {
+      return fetchWeatherUncached(lng, lat, at).then(data => {
+        if (!isWeatherAvailable(data)) {
+          throw new Error('Open-Meteo hourly weather unavailable');
+        }
+        return data;
+      });
+    });
+    return weather;
+  } catch (err) {
+    logOpenMeteoFailure(key || coordinateKey(lng, lat), err);
+    return { temperature: null, humidity: null, condition: '未知' };
+  }
+}
+
+module.exports = {
+  fetchWeather,
+  fetchOpenMeteoCurrent
+};
