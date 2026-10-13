@@ -4,9 +4,9 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const { uploadToCOS } = require('./config/cos');
 
 // 路由
 const areasRouter = require('./routes/areas');
@@ -75,15 +75,20 @@ function parseMultipart(buffer, boundary) {
     const data = block.slice(sep + 4);
     const nameMatch = /name="([^"]*)"/.exec(headers);
     const fileMatch = /filename="([^"]*)"/.exec(headers);
+    const typeMatch = /Content-Type:\s*([^\r\n]+)/i.exec(headers);
     if (nameMatch && nameMatch[1] === 'file' && fileMatch) {
-      results.push({ filename: fileMatch[1], data });
+      results.push({
+        filename: fileMatch[1],
+        data,
+        contentType: typeMatch ? typeMatch[1].trim() : 'application/octet-stream'
+      });
     }
     pos = next + delimiter.length;
   }
   return results;
 }
 
-app.post('/upload/image', express.raw({ type: 'multipart/form-data', limit: '20mb' }), (req, res, next) => {
+app.post('/upload/image', express.raw({ type: 'multipart/form-data', limit: '20mb' }), async (req, res, next) => {
   try {
     const ct = req.headers['content-type'] || '';
     const bm = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(ct);
@@ -92,15 +97,10 @@ app.post('/upload/image', express.raw({ type: 'multipart/form-data', limit: '20m
     const files = parseMultipart(req.body, boundary);
     if (!files.length) return res.status(400).json({ code: 400, message: '没有收到文件' });
     const f = files[0];
-    const extMatch = /\.([a-zA-Z0-9]+)$/.exec(f.filename);
-    const ext = extMatch ? extMatch[1] : 'jpg';
-    const filename = crypto.randomUUID() + '.' + ext;
-    const uploadsDir = path.join(__dirname, 'uploads');
-    fs.mkdirSync(uploadsDir, { recursive: true });
-    fs.writeFileSync(path.join(uploadsDir, filename), f.data);
+    const url = await uploadToCOS(f.data, f.filename, f.contentType);
     res.json({
       code: 0,
-      url: (process.env.PUBLIC_URL || 'https://cotton-pest-backend.onrender.com') + '/uploads/' + filename
+      url
     });
   } catch (err) {
     next(err);
@@ -148,7 +148,7 @@ async function start() {
     console.log('  ==========================================');
     console.log('  前端页面: http://localhost:' + PORT);
     console.log('  环境: ' + (process.env.NODE_ENV || 'development'));
-    console.log('  MongoDB: ' + (process.env.MONGODB_URI ? '已配置' : '未配置'));
+    console.log('  MongoDB: ' + ((process.env.MONGODB_URI || process.env.MONGO_URI) ? '已配置' : '未配置'));
     console.log('  API Key: ' + (process.env.API_KEY ? '已配置' : '使用开发默认值'));
     console.log('  和风天气: ' + (process.env.QWEATHER_KEY ? '已配置' : '未配置'));
     console.log('============================================');
