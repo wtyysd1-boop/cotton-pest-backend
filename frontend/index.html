@@ -270,7 +270,7 @@ height:600px;
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
 <script>(function(){
 
-window.BACKEND_URL="https://cotton-pest-backend.onrender.com";
+window.BACKEND_URL=window.BACKEND_URL||window.location.origin;
 
 var curArea="all",curRange="1d",curPoint=null;var regionReqSeq=0;
 var currentReport=null,weatherMode="area",weatherRequestCache={};
@@ -329,7 +329,12 @@ document.getElementById("pmHum").textContent=d.humidity!=null?d.humidity+"%":"�
 document.getElementById("pmWeather").textContent=(d.condition&&d.condition!=="未知")?d.condition:"暂无历史天气数据";
 var imgUrl=d.imageUrl||d.image_url||"";
 var pre=document.getElementById("pmImgPreview");
-if(imgUrl&&/^https?:\/\//i.test(imgUrl)){pre.innerHTML='<img src="'+imgUrl+'" style="width:100%;max-height:180px;object-fit:cover;border-radius:6px;" onerror="this.style.display=\'none\';this.parentNode.innerHTML=\'图片加载失败\';">'}else{pre.innerHTML='<div style="color:#9fc4e8;font-size:14px;text-align:center;padding:14px 0">暂无图片</div>'}
+pre.replaceChildren();
+if(imgUrl&&/^https?:\/\//i.test(imgUrl)){
+var img=document.createElement('img');img.src=imgUrl;
+img.style.cssText='width:100%;max-height:180px;object-fit:cover;border-radius:6px;';
+img.onerror=function(){pre.textContent='图片加载失败'};pre.appendChild(img);
+}else{pre.textContent='暂无图片'}
 pre.style.display="block";el.style.display="block";
 }
 function escx(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}

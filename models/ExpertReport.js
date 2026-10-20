@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 
 const ExpertReportSchema = new mongoose.Schema({
+  pestName: { type: String, trim: true, maxlength: 100 },
+  expertName: { type: String, trim: true, maxlength: 50 },
+  contact: { type: String, trim: true, maxlength: 100 },
 
   location: {
     type: {
@@ -35,15 +38,8 @@ const ExpertReportSchema = new mongoose.Schema({
 
 });
 
-
 ExpertReportSchema.index({
   location:"2dsphere"
 });
-
-
-module.exports = mongoose.model(
-  "ExpertReport",
-  ExpertReportSchema
-);
 
 module.exports = mongoose.model('ExpertReport', ExpertReportSchema);

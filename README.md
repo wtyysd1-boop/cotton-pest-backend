@@ -1,12 +1,12 @@
 ﻿# 棉花病虫害智能识别系统 - 后端服务
 
-基于 Node.js + Express + MongoDB + 和风天气 的虫害监测后端。
+基于 Node.js + Express + MongoDB + Open-Meteo 的虫害监测后端。
 
 ---
 
 ## 📋 系统要求
 
-- Node.js >= 18
+- Node.js >= 20.19（建议使用受支持的 LTS 版本）
 - MongoDB >= 6.0（本地实例或 MongoDB Atlas）
 - npm >= 9
 
@@ -17,7 +17,7 @@
 ### 1. 安装依赖
 
 ```bash
-cd backend
+cd cotton-pest-backend
 npm install
 ```
 
@@ -32,7 +32,6 @@ cp .env.example .env
 | 变量 | 说明 | 必填 |
 |------|------|------|
 | `MONGODB_URI` | MongoDB 连接串（本地或 Atlas） | 是 |
-| `QWEATHER_KEY` | 和风天气 API Key | 是（否则天气数据为 null） |
 | `PORT` | 服务端口，默认 3000 | 否 |
 
 #### MongoDB 配置示例
@@ -42,19 +41,16 @@ cp .env.example .env
 MONGODB_URI=mongodb://localhost:27017/cotton_pest
 ```
 
-**MongoDB Atlas（你的连接串）：**
+**MongoDB Atlas（占位符，请替换）：**
 ```
-MONGODB_URI=mongodb+srv://wtyysd1_db_user:VS0iJcH7ROQ3E8zh@cluster0.z85yf8w.mongodb.net/cotton_pest?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>/cotton_pest?retryWrites=true&w=majority
 ```
 
-#### 和风天气配置
+#### 天气服务
 
-1. 前往 https://dev.qweather.com 注册账号
-2. 创建免费订阅（"免费订阅"即可，每天 1000 次调用额度）
-3. 获取 API Key
-4. 填入 `.env` 的 `QWEATHER_KEY`
+使用 Open-Meteo，无需配置 QWEATHER_KEY。上游不可用时上报仍保存，天气字段降级为空。
 
-### 3. 导入种子数据
+### 3. 导入种子数据（仅测试库，会清空区域及上报记录）
 
 ```bash
 npm run seed
@@ -112,7 +108,9 @@ curl "http://localhost:3000/api/stats/region/430100?range=1d"
 
 ### POST /api/reports/submit
 
-提交一条虫害识别结果。后端会自动根据坐标调和风天气 API 补全气温、湿度、天气现象。
+提交一条虫害识别结果。后端会自动根据坐标调Open-Meteo API 补全气温、湿度、天气现象。
+
+**鉴权：** POST 上报接口需要请求头 `x-api-key`，值与服务端 `API_KEY` 一致。生产环境必须设置私有密钥。
 
 **请求体：**
 ```json
@@ -214,7 +212,7 @@ npm run migrate
 - [ ] `curl http://localhost:3000/api/areas` 返回 14 个城市
 - [ ] `curl -X POST ... /api/reports/submit` 返回 `"上报成功"`
 - [ ] `curl "http://localhost:3000/api/stats/region/all?range=7d"` 返回统计数据
-- [ ] 在 `.env` 中配置了真实的和风天气 Key 后，上报接口自动补全天气数据
+- [ ] Open-Meteo 可访问时，上报接口自动补全天气数据
 - [ ] 浏览器打开 http://localhost:3000 能看到前端页面
 
 ---
@@ -236,7 +234,7 @@ backend/
 │   ├── reports.js           # POST /api/reports/submit
 │   └── stats.js             # GET /api/stats/region/:areaId
 ├── utils/
-│   └── weather.js           # 和风天气 API 封装
+│   └── weather.js           # Open-Meteo API 封装
 ├── middleware/
 │   └── errorHandler.js      # 全局错误处理
 ├── scripts/
@@ -248,7 +246,18 @@ backend/
 
 ## 📝 注意事项
 
-1. **本代码未在沙箱环境中实际运行过**，需要你在本地跑一遍确认所有功能正常
-2. 和风天气 API 在沙箱中无法测试，请配置真实 Key 后验证天气自动补全功能
+1. 使用 `npm test` 运行隔离数据库接口回归测试；测试不会连接生产数据库。
+2. 腾讯 COS 上传需要配置 `.env.example` 中的 COS 参数，外部服务需用部署环境凭据验收。
 3. 小程序前端部分（wx.getLocation + wx.request 上报 + web-view 地图页）需要在微信开发者工具中单独开发，本仓库仅提供后端 API 支持
 4. 生产环境部署建议使用 PM2 进程管理、Nginx 反向代理 + HTTPS、MongoDB Atlas 云数据库
+
+## 测试与部署配置
+
+- `npm ci` 安装锁定依赖，`npm test` 启动临时 MongoDB 并运行 HTTP 回归测试。首次测试会下载 MongoDB 二进制，需要网络；不会使用生产连接串。
+- 天气及 COS 在回归测试中替换为受控响应；部署后需分别验收实际网络及 COS 权限。
+- `npm run dev` 使用 Node 内置热重载，不再需要 nodemon。
+- 同源前端默认连接当前站点；独立部署可在页面初始化前设置 `window.BACKEND_URL`，后端通过 `CORS_ORIGIN` 配置逗号分隔的允许来源。
+- `TRUST_PROXY` 默认 0；部署在单层受信任反向代理之后时设为 1，否则限流可能按代理 IP 计数。不要在可绕过代理直连的服务上盲目信任转发头。
+- 两个上传入口均保留：`/api/upload/upload-image` 使用字段 `image`，默认 10MB；`/upload/image` 使用字段 `file`，默认 20MB。`UPLOAD_MAX_FILE_SIZE_MB` 可统一覆盖。
+- 统计继续采用“species 非 none 且 confidence > 0.3”的既有判定，分布图与总数保持一致；风险评分权重保持不变。
+- 历史 README 中的数据库凭据已删除，但 Git 历史仍包含旧内容，必须在数据库平台轮换密码。
