@@ -56,15 +56,15 @@ async function migrate() {
     },
     timestamp: r.timestamp ? new Date(r.timestamp) : new Date(),
     weather: {
-      temperature: r.temperature || r.weatherSnapshot?.temperature || null,
-      humidity: r.humidity || r.weatherSnapshot?.humidity || null,
+      temperature: r.temperature ?? r.weatherSnapshot?.temperature ?? null,
+      humidity: r.humidity ?? r.weatherSnapshot?.humidity ?? null,
       condition: r.condition || r.weatherSnapshot?.condition || '未知'
     },
     pestInfo: {
       isInfested: r.isInfested ?? r.pestInfo?.isInfested ?? true,
       species: r.species || r.pestInfo?.species || 'none',
       severity: r.severity || r.pestInfo?.severity || '无',
-      confidence: r.confidence || r.pestInfo?.confidence || null
+      confidence: r.confidence ?? r.pestInfo?.confidence ?? null
     },
     imageUrl: r.imageUrl || '',
     processingStatus: 'completed'

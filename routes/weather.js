@@ -7,7 +7,7 @@ const { fetchOpenMeteoCurrent } = require('../utils/weather');
  * GET /api/weather/area/:areaId
  * 根据区域坐标调用 Open-Meteo 返回实时天气
  */
-router.get('/area/:areaId', async (req, res) => {
+router.get('/area/:areaId', require('../middleware/validateAreaId'), async (req, res) => {
   try {
     const { areaId } = req.params;
     let lat;
@@ -22,7 +22,6 @@ router.get('/area/:areaId', async (req, res) => {
         { adcode: parseInt(areaId, 10) },
         { name: 1, latitude: 1, longitude: 1, center: 1, _id: 0 }
       ).lean();
-      console.log('area:', area);
       if (!area) {
         return res.json({ code: 1, message: '天气获取失败' });
       }
@@ -33,7 +32,6 @@ router.get('/area/:areaId', async (req, res) => {
         lng = area.center.coordinates[0];
         lat = area.center.coordinates[1];
       }
-      console.log('weather coordinate', lat, lng);
     }
 
     if (lat == null || lng == null) {

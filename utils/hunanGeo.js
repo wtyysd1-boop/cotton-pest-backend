@@ -2,19 +2,21 @@ const fs = require("fs");
 const path = require("path");
 
 const GEO_PATH = path.join(
-  process.cwd(),
+  __dirname, '..',
   "data",
   "hunan.json"
 );
 
 
+let cachedGeo;
 function loadGeo(){
+  if (cachedGeo) return cachedGeo;
 
   if(!fs.existsSync(GEO_PATH)){
     throw new Error("找不到 hunan.json 边界数据");
   }
 
-  return JSON.parse(
+  return cachedGeo = JSON.parse(
     fs.readFileSync(GEO_PATH,"utf8")
   );
 

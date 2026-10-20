@@ -1,5 +1,6 @@
 ﻿const express = require('express');
 const router = express.Router();
+const validateAreaId = require('../middleware/validateAreaId');
 const PestReport = require('../models/PestReport');
 const ExpertReport = require('../models/ExpertReport');
 const { fetchWeather } = require('../utils/weather');
@@ -7,12 +8,8 @@ const requireApiKey = require('../middleware/requireApiKey');
 const rateLimit = require('../middleware/rateLimit');
 const { checkHunanCity } = require('../utils/hunanGeo');
 
-const ALLOWED_SPECIES = [
-  'bollworm', 'spider_mite', 'aphid', 'lygus', 'whitefly',
-  'noctuid', 'leafhopper', 'thrips', 'leafminer',
-  'fusarium_wilt', 'verticillium_wilt', 'none'
-];
-const SEVERITY_LEVELS = ['轻', '中', '重', '特重', '无'];
+const ALLOWED_SPECIES = PestReport.schema.path('pestInfo.species').enumValues;
+const SEVERITY_LEVELS = PestReport.schema.path('pestInfo.severity').enumValues;
 
 function normalizeImageUrl(value) {
   const text = String(value || '').trim();
@@ -41,10 +38,10 @@ function normalizeImageUrl(value) {
  */
 router.post('/submit', rateLimit({ max: 20 }), requireApiKey, async (req, res, next) => {
   try {
-    const { areaId, location, timestamp, pestInfo, imageUrl } = req.body;
+    const { location, timestamp, pestInfo, imageUrl } = req.body || {};
 
     // 参数校验
-    if (!location || !location.coordinates || location.coordinates.length !== 2) {
+    if (!location || !Array.isArray(location.coordinates) || location.coordinates.length !== 2) {
       return res.status(400).json({ code: 400, message: '缺少有效的 location.coordinates [经度, 纬度]' });
     }
     const lng = Number(location.coordinates[0]);
@@ -125,7 +122,7 @@ router.post('/submit', rateLimit({ max: 20 }), requireApiKey, async (req, res, n
  * GET /api/reports
  * 获取上报记录列表（含经纬度），用于地图具体点位标记
  */
-router.get("/", async (req, res, next) => {
+router.get("/", validateAreaId, async (req, res, next) => {
   try {
     const { range, limit, areaId } = req.query;
     const query = {};
@@ -142,7 +139,7 @@ router.get("/", async (req, res, next) => {
       query.areaId = parsedAreaId;
     }
     const reports = await PestReport.find(query)
-      .select("areaId location.coordinates timestamp weather pestInfo.isInfested pestInfo.species pestInfo.severity imageUrl")
+      .select("areaId location.coordinates timestamp weather pestInfo.isInfested pestInfo.species pestInfo.severity pestInfo.confidence imageUrl")
       .sort({ timestamp: -1 })
       .limit(safeLimit);
     res.json({
@@ -159,6 +156,7 @@ router.get("/", async (req, res, next) => {
         isInfested: r.pestInfo ? r.pestInfo.isInfested : false,
         species: r.pestInfo ? r.pestInfo.species : null,
         severity: r.pestInfo ? r.pestInfo.severity : null,
+        confidence: r.pestInfo ? r.pestInfo.confidence : null,
         imageUrl: r.imageUrl || ""
       }))
     });
@@ -188,40 +186,13 @@ const PEST_MAP = {
   "健康叶片": { id: "none", name: "健康", infested: false }
 };
 
-// 湖南省14地市坐标（用于经纬度 → areaId 转换）
-const CITIES = [
-  { name: '长沙市', adcode: 430100, center: [112.94, 28.23] },
-  { name: '株洲市', adcode: 430200, center: [113.13, 27.83] },
-  { name: '湘潭市', adcode: 430300, center: [112.91, 27.81] },
-  { name: '衡阳市', adcode: 430400, center: [112.57, 26.90] },
-  { name: '邵阳市', adcode: 430500, center: [111.47, 27.25] },
-  { name: '岳阳市', adcode: 430600, center: [113.13, 29.37] },
-  { name: '常德市', adcode: 430700, center: [111.70, 29.03] },
-  { name: '张家界市', adcode: 430800, center: [110.48, 29.13] },
-  { name: '益阳市', adcode: 430900, center: [112.32, 28.60] },
-  { name: '郴州市', adcode: 431000, center: [113.01, 25.79] },
-  { name: '永州市', adcode: 431100, center: [111.61, 26.43] },
-  { name: '怀化市', adcode: 431200, center: [109.93, 27.55] },
-  { name: '娄底市', adcode: 431300, center: [112.01, 27.73] },
-  { name: '湘西州', adcode: 433100, center: [109.61, 28.90] }
-];
-
-function findNearestCity(lng, lat) {
-  let minDist = Infinity, nearest = 430100;
-  CITIES.forEach(c => {
-    const d = Math.sqrt(Math.pow(c.center[0] - lng, 2) + Math.pow(c.center[1] - lat, 2));
-    if (d < minDist) { minDist = d; nearest = c.adcode; }
-  });
-  return nearest;
-}
-
 /**
  * POST /api/reports/miniapp
  * 接收小程序识别结果，转换为 PestReport 格式存入 MongoDB
  */
 router.post('/miniapp', rateLimit({ max: 60 }), requireApiKey, async (req, res, next) => {
   try {
-    const { results, photo, location, time } = req.body;
+    const { results, photo, location, time } = req.body || {};
     if (!Array.isArray(results) || results.length === 0) {
       return res.status(400).json({ code: 400, message: '缺少识别结果' });
     }
@@ -275,11 +246,7 @@ router.post('/miniapp', rateLimit({ max: 60 }), requireApiKey, async (req, res, 
     const saved = await report.save();
     res.json({ code: 0, message: '导入成功', data: { id: saved._id.toString() } });
   } catch (err) {
-    console.error("miniapp同步错误:", err);
-    res.status(500).json({
-      code: 500,
-      message: err.message || "服务器内部错误"
-    });
+    next(err);
   }
 });
 

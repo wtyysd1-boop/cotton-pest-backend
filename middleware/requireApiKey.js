@@ -11,6 +11,9 @@ function safeEqual(a, b) {
 }
 
 function requireApiKey(req, res, next) {
+  if (process.env.NODE_ENV === 'production' && !process.env.API_KEY) {
+    return res.status(503).json({ code: 503, message: '服务未配置 API_KEY' });
+  }
   const expected = process.env.API_KEY || DEFAULT_API_KEY;
   const provided = req.get('x-api-key');
 

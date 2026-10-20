@@ -1,8 +1,21 @@
 ﻿const express = require('express');
 const router = express.Router();
+const validateAreaId = require('../middleware/validateAreaId');
 const PestReport = require('../models/PestReport');
 const Area = require('../models/Area');
 const { getAdvice } = require('../utils/pestAdvice');
+
+// Preserve the existing confidence > 0.3 definition across all statistics.
+const INFESTED_FILTER = {
+  'pestInfo.species': { $ne: 'none' },
+  'pestInfo.confidence': { $gt: 0.3 }
+};
+const INFESTED_EXPRESSION = {
+  $and: [
+    { $ne: ['$pestInfo.species', 'none'] },
+    { $gt: ['$pestInfo.confidence', 0.3] }
+  ]
+};
 
 // 综合风险评分模型：虫害率40分 + 趋势30分 + 天气20分 + 重点虫害10分
 const FOCUS_PEST_SPECIES = ['spider_mite', 'bollworm', 'noctuid'];
@@ -166,7 +179,7 @@ function formatReportTime(timestamp) {
  *
  * 全部使用 MongoDB 聚合管道（Aggregate），不手动过滤数据
  */
-router.get('/region/:areaId', async (req, res, next) => {
+router.get('/region/:areaId', validateAreaId, async (req, res, next) => {
   try {
     const { areaId } = req.params;
     const range = req.query.range || '1d';
@@ -193,12 +206,7 @@ router.get('/region/:areaId', async (req, res, next) => {
           infested: {
             $sum: {
               $cond: [
-                {
-                  $and: [
-                    { $ne: ['$pestInfo.species', 'none'] },
-                    { $gt: ['$pestInfo.confidence', 0.3] }
-                  ]
-                },
+                INFESTED_EXPRESSION,
                 1,
                 0
               ]
@@ -231,7 +239,7 @@ router.get('/region/:areaId', async (req, res, next) => {
 
     // 虫害类型分布
     const speciesPipeline = [
-      { $match: { ...matchStage, 'pestInfo.species': { $ne: 'none' } } },
+      { $match: { ...matchStage, ...INFESTED_FILTER } },
       { $group: { _id: '$pestInfo.species', count: { $sum: 1 } } },
       { $project: { _id: 0, species: '$_id', count: 1 } },
       { $sort: { count: -1 } }
@@ -240,7 +248,7 @@ router.get('/region/:areaId', async (req, res, next) => {
 
     // 严重程度分布
     const severityPipeline = [
-      { $match: { ...matchStage, 'pestInfo.species': { $ne: 'none' } } },
+      { $match: { ...matchStage, ...INFESTED_FILTER } },
       { $group: { _id: '$pestInfo.severity', count: { $sum: 1 } } },
       { $project: { _id: 0, level: '$_id', count: 1 } },
       { $sort: { level: 1 } }
@@ -257,12 +265,7 @@ router.get('/region/:areaId', async (req, res, next) => {
           infested: {
             $sum: {
               $cond: [
-                {
-                  $and: [
-                    { $ne: ['$pestInfo.species', 'none'] },
-                    { $gt: ['$pestInfo.confidence', 0.3] }
-                  ]
-                },
+                INFESTED_EXPRESSION,
                 1,
                 0
               ]
@@ -360,12 +363,6 @@ router.get('/focus-areas', async (req, res, next) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 3, 1), 20);
     const sortByRisk = req.query.sort === 'risk';
     const matchStage = { timestamp: { $gte: since } };
-    const infestedCond = {
-      $and: [
-        { $ne: ['$pestInfo.species', 'none'] },
-        { $gt: ['$pestInfo.confidence', 0.3] }
-      ]
-    };
 
     const [baseStats, speciesList, trendList] = await Promise.all([
       PestReport.aggregate([
@@ -374,7 +371,7 @@ router.get('/focus-areas', async (req, res, next) => {
           $group: {
             _id: '$areaId',
             total: { $sum: 1 },
-            infested: { $sum: { $cond: [infestedCond, 1, 0] } },
+            infested: { $sum: { $cond: [INFESTED_EXPRESSION, 1, 0] } },
             avgTemperature: { $avg: '$weather.temperature' },
             avgHumidity: { $avg: '$weather.humidity' }
           }
@@ -398,7 +395,7 @@ router.get('/focus-areas', async (req, res, next) => {
         }
       ]),
       PestReport.aggregate([
-        { $match: { ...matchStage, 'pestInfo.species': { $ne: 'none' }, 'pestInfo.confidence': { $gt: 0.3 } } },
+        { $match: { ...matchStage, ...INFESTED_FILTER } },
         { $group: { _id: { areaId: '$areaId', species: '$pestInfo.species' }, count: { $sum: 1 } } },
         { $sort: { count: -1 } },
         {
@@ -419,7 +416,7 @@ router.get('/focus-areas', async (req, res, next) => {
               day: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } }
             },
             total: { $sum: 1 },
-            infested: { $sum: { $cond: [infestedCond, 1, 0] } }
+            infested: { $sum: { $cond: [INFESTED_EXPRESSION, 1, 0] } }
           }
         },
         { $sort: { '_id.day': 1 } },
@@ -513,7 +510,7 @@ router.get('/focus-areas', async (req, res, next) => {
  * GET /api/stats/advice/:areaId
  * 返回指定区域主要病虫害的防治方案（基于统一风险评分逻辑）
  */
-router.get('/advice/:areaId', async (req, res, next) => {
+router.get('/advice/:areaId', validateAreaId, async (req, res, next) => {
   try {
     const { areaId } = req.params;
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -522,12 +519,6 @@ router.get('/advice/:areaId', async (req, res, next) => {
     if (areaId !== 'all') {
       matchStage.areaId = numericAreaId;
     }
-    const infestedCond = {
-      $and: [
-        { $ne: ['$pestInfo.species', 'none'] },
-        { $gt: ['$pestInfo.confidence', 0.3] }
-      ]
-    };
 
     const [baseStats, speciesList, trendList] = await Promise.all([
       PestReport.aggregate([
@@ -536,7 +527,7 @@ router.get('/advice/:areaId', async (req, res, next) => {
           $group: {
             _id: null,
             total: { $sum: 1 },
-            infested: { $sum: { $cond: [infestedCond, 1, 0] } },
+            infested: { $sum: { $cond: [INFESTED_EXPRESSION, 1, 0] } },
             avgTemperature: { $avg: '$weather.temperature' },
             avgHumidity: { $avg: '$weather.humidity' }
           }
@@ -559,7 +550,7 @@ router.get('/advice/:areaId', async (req, res, next) => {
         }
       ]),
       PestReport.aggregate([
-        { $match: { ...matchStage, 'pestInfo.species': { $ne: 'none' }, 'pestInfo.confidence': { $gt: 0.3 } } },
+        { $match: { ...matchStage, ...INFESTED_FILTER } },
         { $group: { _id: '$pestInfo.species', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
         { $project: { _id: 0, species: '$_id', count: 1 } }
@@ -570,7 +561,7 @@ router.get('/advice/:areaId', async (req, res, next) => {
           $group: {
             _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
             total: { $sum: 1 },
-            infested: { $sum: { $cond: [infestedCond, 1, 0] } }
+            infested: { $sum: { $cond: [INFESTED_EXPRESSION, 1, 0] } }
           }
         },
         { $sort: { _id: 1 } },
@@ -752,7 +743,7 @@ router.get('/overview', async (req, res, next) => {
  * GET /api/stats/trend
  * 最近7天每天的虫害上报数量（无数据日期补0，按日期升序）
  */
-router.get('/trend', async (req, res, next) => {
+router.get('/trend', validateAreaId, async (req, res, next) => {
   try {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const { areaId } = req.query;

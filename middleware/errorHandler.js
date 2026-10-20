@@ -4,6 +4,14 @@
 function errorHandler(err, req, res, next) {
   console.error('[Error]', err.message);
 
+  if (res.headersSent) return next(err);
+  if (err.status >= 400 && err.status < 500) {
+    return res.status(err.status).json({
+      code: err.status,
+      message: err.type === 'entity.parse.failed' ? 'JSON 格式不正确' : err.message
+    });
+  }
+
   // Mongoose 数据验证错误
   if (err.name === 'ValidationError') {
     return res.status(400).json({

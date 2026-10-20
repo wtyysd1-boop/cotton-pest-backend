@@ -1,7 +1,7 @@
 require('dotenv').config();
 
+const { randomUUID } = require('crypto');
 const COS = require("cos-nodejs-sdk-v5");
-
 
 const cos = new COS({
     SecretId: process.env.COS_SECRET_ID,
@@ -11,11 +11,10 @@ const cos = new COS({
 const BUCKET = process.env.COS_BUCKET || "cotton-pest-image-1462213945";
 const REGION = process.env.COS_REGION || "ap-guangzhou";
 
-
 function uploadToCOS(buffer, name, type) {
     return new Promise((resolve, reject) => {
         const safeName = String(name || 'file').replace(/[^\w.\-]+/g, '_');
-        const key = "images/" + Date.now() + "_" + safeName;
+        const key = "images/" + randomUUID() + "_" + safeName;
 
         cos.putObject({
             Bucket: BUCKET,
@@ -34,7 +33,6 @@ function uploadToCOS(buffer, name, type) {
         });
     });
 }
-
 
 module.exports = {
     uploadToCOS

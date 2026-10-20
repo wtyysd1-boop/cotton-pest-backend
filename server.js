@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
-const { uploadToCOS } = require('./config/cos');
+const uploadImage = require('./middleware/uploadImage');
 
 // 路由
 const areasRouter = require('./routes/areas');
@@ -20,7 +20,7 @@ const PORT = process.env.PORT || 3000;
 
 // ── 中间件 ──
 app.disable('x-powered-by');
-app.set('trust proxy', 1);
+app.set('trust proxy', Number(process.env.TRUST_PROXY) || false);
 
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
@@ -53,59 +53,12 @@ app.get('/api/health', (req, res) => {
   res.json({ code: 0, message: 'ok', data: { uptime: process.uptime() } });
 });
 
-// ── 图片上传接口 ──
-function parseMultipart(buffer, boundary) {
-  const delimiter = Buffer.from('--' + boundary);
-  const results = [];
-  let pos = 0;
-  for (;;) {
-    const start = buffer.indexOf(delimiter, pos);
-    if (start === -1) break;
-    const lineEnd = buffer.indexOf(Buffer.from('\r\n'), start + delimiter.length);
-    if (lineEnd === -1) break;
-    const partStart = lineEnd + 2;
-    const next = buffer.indexOf(delimiter, partStart);
-    if (next === -1) break;
-    let partEnd = next;
-    if (buffer[partEnd - 2] === 13 && buffer[partEnd - 1] === 10) partEnd -= 2;
-    const block = buffer.slice(partStart, partEnd);
-    const sep = block.indexOf(Buffer.from('\r\n\r\n'));
-    if (sep === -1) { pos = next + delimiter.length; continue; }
-    const headers = block.slice(0, sep).toString('utf8');
-    const data = block.slice(sep + 4);
-    const nameMatch = /name="([^"]*)"/.exec(headers);
-    const fileMatch = /filename="([^"]*)"/.exec(headers);
-    const typeMatch = /Content-Type:\s*([^\r\n]+)/i.exec(headers);
-    if (nameMatch && nameMatch[1] === 'file' && fileMatch) {
-      results.push({
-        filename: fileMatch[1],
-        data,
-        contentType: typeMatch ? typeMatch[1].trim() : 'application/octet-stream'
-      });
-    }
-    pos = next + delimiter.length;
-  }
-  return results;
-}
-
-app.post('/upload/image', express.raw({ type: 'multipart/form-data', limit: '20mb' }), async (req, res, next) => {
-  try {
-    const ct = req.headers['content-type'] || '';
-    const bm = /boundary=(?:"([^"]+)"|([^;]+))/i.exec(ct);
-    if (!bm) return res.status(400).json({ code: 400, message: '缺少 multipart boundary' });
-    const boundary = bm[1] || bm[2];
-    const files = parseMultipart(req.body, boundary);
-    if (!files.length) return res.status(400).json({ code: 400, message: '没有收到文件' });
-    const f = files[0];
-    const url = await uploadToCOS(f.data, f.filename, f.contentType);
-    res.json({
-      code: 0,
-      url
-    });
-  } catch (err) {
-    next(err);
-  }
+app.use('/api', (req, res) => {
+  res.status(404).json({ code: 404, message: '接口不存在' });
 });
+
+// ── 图片上传接口 ──
+app.post('/upload/image', ...uploadImage('file', 20, true));
 
 // ── 静态文件（前端页面） ──
 const siblingFrontend = path.join(__dirname, '..', 'frontend');
@@ -118,9 +71,6 @@ app.use('/uploads', express.static(uploadsPath));
 
 // 前端入口：自动返回 index.html
 app.get('*', (req, res) => {
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({ code: 404, message: '接口不存在' });
-  }
   const indexFile = path.join(frontendPath, 'index.html');
   if (!fs.existsSync(indexFile)) {
     return res.status(404).json({ code: 404, message: '前端页面未部署，请检查 frontend 目录' });
@@ -136,7 +86,7 @@ async function start() {
   // 连接 MongoDB
   await connectDB();
 
-  app.listen(PORT, '0.0.0.0', () => {
+  return app.listen(PORT, '0.0.0.0', () => {
     console.log('============================================');
     console.log('  棉花病虫害智能识别系统 - 后端服务');
     console.log('  ==========================================');
@@ -150,12 +100,14 @@ async function start() {
     console.log('  环境: ' + (process.env.NODE_ENV || 'development'));
     console.log('  MongoDB: ' + ((process.env.MONGODB_URI || process.env.MONGO_URI) ? '已配置' : '未配置'));
     console.log('  API Key: ' + (process.env.API_KEY ? '已配置' : '使用开发默认值'));
-    console.log('  和风天气: ' + (process.env.QWEATHER_KEY ? '已配置' : '未配置'));
+    console.log('  天气服务: Open-Meteo');
     console.log('============================================');
   });
 }
 
-start().catch(err => {
+if (require.main === module) start().catch(err => {
   console.error('启动失败:', err);
   process.exit(1);
 });
+
+module.exports = { app, start };
