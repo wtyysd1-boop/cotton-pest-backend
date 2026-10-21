@@ -128,11 +128,11 @@ function activateGlobalCooldown(err) {
   );
 }
 
-async function getWithCache(key, requestFn) {
+async function getWithCache(key, requestFn, useOpenMeteoCooldown = false) {
   const cached = readCache(key);
   if (cached) return cached;
 
-  if (globalCooldownActive()) {
+  if (useOpenMeteoCooldown && globalCooldownActive()) {
     console.warn('[Weather] global cooldown active');
     const lastSuccessful = readLastSuccessfulCache(key);
     if (lastSuccessful) {
@@ -164,7 +164,7 @@ async function getWithCache(key, requestFn) {
       return { ...data, cached: false, stale: false, cacheTime: null };
     })
     .catch(err => {
-      activateGlobalCooldown(err);
+      if (useOpenMeteoCooldown) activateGlobalCooldown(err);
       recordFailure(key, err);
       if (err && err.response && err.response.status === 429) {
         const lastSuccessful = readLastSuccessfulCache(key);
@@ -209,6 +209,18 @@ function weatherText(code) {
   if (code >= 71 && code <= 77) return '降雪';
   if (code >= 80 && code <= 82) return '阵雨';
   if (code >= 95 && code <= 99) return '雷雨';
+  return '未知';
+}
+
+function metNoWeatherText(symbol) {
+  const value = String(symbol || '').toLowerCase();
+  if (!value) return '未知';
+  if (value.includes('thunder')) return '雷雨';
+  if (value.includes('snow') || value.includes('sleet')) return '降雪';
+  if (value.includes('rain') || value.includes('drizzle')) return value.includes('shower') ? '阵雨' : '小雨';
+  if (value.includes('fog')) return '雾';
+  if (value.includes('clear')) return '晴';
+  if (value.includes('cloud') || value.includes('fair')) return '多云';
   return '未知';
 }
 
@@ -348,27 +360,78 @@ async function requestOpenMeteoCurrent(lng, lat) {
   };
 }
 
+async function requestMetNoCurrent(lng, lat) {
+  const resp = await axios.get('https://api.met.no/weatherapi/locationforecast/2.0/compact', {
+    params: {
+      lat,
+      lon: lng
+    },
+    headers: {
+      'User-Agent': 'cotton-pest-backend/2.0 (https://github.com/wtyysd1-boop/cotton-pest-backend)'
+    },
+    timeout: 8000
+  });
+  const item = resp.data && resp.data.properties && resp.data.properties.timeseries &&
+    resp.data.properties.timeseries[0];
+  const details = item && item.data && item.data.instant && item.data.instant.details;
+  if (!details) {
+    throw new Error('MET Norway response missing current weather');
+  }
+  const summary = item.data.next_1_hours && item.data.next_1_hours.summary;
+  const time = item.time ? new Date(item.time) : new Date();
+  return {
+    temperature: details.air_temperature != null ? Number(details.air_temperature) : null,
+    humidity: details.relative_humidity != null ? Number(details.relative_humidity) : null,
+    condition: metNoWeatherText(summary && summary.symbol_code),
+    weather: metNoWeatherText(summary && summary.symbol_code),
+    updateTime: new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(time)
+  };
+}
+
 async function fetchOpenMeteoCurrent(lng, lat) {
   if (!Number.isFinite(Number(lng)) || !Number.isFinite(Number(lat))) {
-    console.warn('[Weather] Open-Meteo invalid coordinates:', lng, lat);
+    console.warn('[Weather] invalid coordinates:', lng, lat);
     return null;
   }
 
-  let key;
-  try {
-    key = 'current:' + coordinateKey(lng, lat);
-    const weather = await getWithCache(key, () => requestOpenMeteoCurrent(lng, lat));
-    if (!isWeatherAvailable(weather)) return null;
-    return weather;
-  } catch (err) {
-    if (err.code === 'OPEN_METEO_GLOBAL_COOLDOWN' ||
-        (err.response && err.response.status === 429)) {
-      console.warn('[Weather] no cached weather available key=' + key);
-      return null;
+  const coords = coordinateKey(lng, lat);
+  const providers = [
+    {
+      name: 'Open-Meteo',
+      key: 'current:open-meteo:' + coords,
+      request: () => requestOpenMeteoCurrent(lng, lat),
+      useOpenMeteoCooldown: true
+    },
+    {
+      name: 'MET Norway',
+      key: 'current:met-no:' + coords,
+      request: () => requestMetNoCurrent(lng, lat),
+      useOpenMeteoCooldown: false
     }
-    logOpenMeteoFailure(key || coordinateKey(lng, lat), err);
-    return null;
+  ];
+
+  for (const provider of providers) {
+    try {
+      const weather = await getWithCache(
+        provider.key,
+        provider.request,
+        provider.useOpenMeteoCooldown
+      );
+      if (isWeatherAvailable(weather)) return weather;
+    } catch (err) {
+      console.warn('[Weather] ' + provider.name + ' unavailable: ' + err.message);
+      logOpenMeteoFailure(provider.key, err);
+    }
   }
+  return null;
 }
 
 async function fetchWeather(lng, lat, timestamp) {
@@ -395,15 +458,27 @@ async function fetchWeather(lng, lat, timestamp) {
         }
         return data;
       });
-    });
+    }, true);
     return weather;
   } catch (err) {
     if (err.code === 'OPEN_METEO_GLOBAL_COOLDOWN' ||
         (err.response && err.response.status === 429)) {
-      console.warn('[Weather] no cached weather available key=' + key);
-      return { temperature: null, humidity: null, condition: '未知' };
+      console.warn('[Weather] no cached hourly weather available key=' + key);
+    } else {
+      logOpenMeteoFailure(key || coordinateKey(lng, lat), err);
     }
-    logOpenMeteoFailure(key || coordinateKey(lng, lat), err);
+
+    const ageMs = Math.abs(Date.now() - at.getTime());
+    if (ageMs <= 6 * 60 * 60 * 1000) {
+      const current = await fetchOpenMeteoCurrent(lng, lat);
+      if (current) {
+        return {
+          temperature: current.temperature,
+          humidity: current.humidity,
+          condition: current.condition
+        };
+      }
+    }
     return { temperature: null, humidity: null, condition: '未知' };
   }
 }

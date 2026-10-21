@@ -33,3 +33,12 @@ test('image URL is assigned as a DOM property, never interpreted as HTML', () =>
   assert.equal(image.src, url);
   assert.equal(elements.get('pmConf').textContent, '93%');
 });
+
+
+test('report timestamps are always rendered in Asia/Shanghai', () => {
+  const start = html.indexOf('function formatShanghaiDateTime(');
+  const end = html.indexOf('function loadSuggestion(', start);
+  const context = vm.createContext({ Intl, Date });
+  vm.runInContext(html.slice(start, end), context);
+  assert.equal(context.formatShanghaiDateTime('2026-10-21T00:05:37.000Z'), '2026/10/21 08:05:37');
+});

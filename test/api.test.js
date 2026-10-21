@@ -186,5 +186,23 @@ test('weather failure still saves report and cools down repeated upstream calls'
   assert.equal(saved.weather.temperature, null);
   assert.equal(saved.weather.condition, '未知');
   assert.equal((await request('/api/reports/submit', body)).status, 201);
-  assert.equal(weatherMock.mock.callCount() - calls, 1);
+  assert.equal(weatherMock.mock.callCount() - calls, 2);
+});
+
+test('current weather falls back to MET Norway while Open-Meteo is cooling down', async () => {
+  weatherMock.mock.mockImplementationOnce(async (url) => {
+    assert.match(url, /api\.met\.no/);
+    return { data: { properties: { timeseries: [{
+      time: '2026-10-21T01:00:00Z',
+      data: {
+        instant: { details: { air_temperature: 24.5, relative_humidity: 81 } },
+        next_1_hours: { summary: { symbol_code: 'partlycloudy_day' } }
+      }
+    }] } } };
+  });
+  const { fetchOpenMeteoCurrent } = require('../utils/weather');
+  const weather = await fetchOpenMeteoCurrent(111.8, 27.5);
+  assert.equal(weather.temperature, 24.5);
+  assert.equal(weather.humidity, 81);
+  assert.equal(weather.condition, '多云');
 });
