@@ -186,7 +186,7 @@ test('weather failure still saves report and cools down repeated upstream calls'
   assert.equal(saved.weather.temperature, null);
   assert.equal(saved.weather.condition, '未知');
   assert.equal((await request('/api/reports/submit', body)).status, 201);
-  assert.equal(weatherMock.mock.callCount() - calls, 2);
+  assert.equal(weatherMock.mock.callCount() - calls, 1);
 });
 
 test('current weather falls back to MET Norway while Open-Meteo is cooling down', async () => {
