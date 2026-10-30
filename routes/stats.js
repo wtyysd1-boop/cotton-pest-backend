@@ -174,7 +174,7 @@ function formatReportTime(timestamp) {
 }
 
 /**
- * GET /api/stats/region/:areaId?range=1d|3d|7d
+ * GET /api/stats/region/:areaId?range=1d|3d|7d|all
  * 返回该区域指定时间窗口内的聚合统计
  *
  * 全部使用 MongoDB 聚合管道（Aggregate），不手动过滤数据
@@ -190,7 +190,7 @@ router.get('/region/:areaId', validateAreaId, async (req, res, next) => {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // $match 阶段：按区域和时间范围过滤
-    const matchStage = { timestamp: { $gte: since } };
+    const matchStage = range === 'all' ? {} : { timestamp: { $gte: since } };
     if (areaId !== 'all') {
       matchStage.areaId = parseInt(areaId, 10);
     }

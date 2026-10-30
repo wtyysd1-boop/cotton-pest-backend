@@ -127,7 +127,7 @@ router.get("/", validateAreaId, async (req, res, next) => {
     const { range, limit, areaId } = req.query;
     const query = {};
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 500, 1), 1000);
-    if (range) {
+    if (range && range !== 'all') {
       const days = { "1d": 1, "3d": 3, "7d": 7 }[range] || 7;
       query.timestamp = { $gte: new Date(Date.now() - days * 24 * 60 * 60 * 1000) };
     }

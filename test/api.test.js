@@ -60,6 +60,26 @@ const validReport = () => ({
   pestInfo: { isInfested: true, species: 'bollworm', severity: '中', confidence: 0.93 }
 });
 
+test('all range includes 177 historical map points and matching statistics without changing timed ranges', async () => {
+  const ages = [0.5, 2, 5, ...Array(174).fill(30)];
+  await PestReport.insertMany(ages.map((days, i) => ({
+    ...validReport(),
+    areaId: i === 176 ? 430200 : 430100,
+    timestamp: new Date(Date.now() - days * 86400000)
+  })));
+  for (const [range, total] of [['all', 177], ['1d', 1], ['3d', 2], ['7d', 3]]) {
+    const points = (await request('/api/reports?range=' + range + '&limit=900')).body;
+    const stats = (await request('/api/stats/region/all?range=' + range)).body;
+    assert.equal(points.code, 0);
+    assert.equal(points.data.length, total);
+    assert.equal(stats.data.total, total);
+    assert.equal(stats.data.trend.reduce((sum, day) => sum + day.total, 0), total);
+    assert.ok(points.data.every(point => point.lng === 112.94 && point.lat === 28.23));
+  }
+  assert.equal((await request('/api/reports?range=all&areaId=430100&limit=900')).body.data.length, 176);
+  assert.equal((await request('/api/stats/region/430100?range=all')).body.data.total, 176);
+});
+
 test('health, areas, frontend and CORS run through HTTP', async () => {
   assert.equal((await request('/api/health')).body.code, 0);
   assert.deepEqual((await request('/api/areas')).body.data, [{ id: '430100', name: '长沙市', center: [112.94, 28.23] }]);

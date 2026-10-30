@@ -115,6 +115,8 @@ height:140px
 @keyframes spin{to{transform:rotate(360deg)}}
 .controls{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:100;display:flex;gap:4px;background:rgba(6,14,36,0.85);padding:4px;border-radius:8px;border:1px solid rgba(0,212,255,0.12)}
 .pill{padding:8px 22px;border:none;border-radius:6px;background:transparent;color:var(--dim);font-size:15px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .2s}
+#timeGroup{width:max-content;max-width:calc(100% - 20px);flex-wrap:nowrap}
+#timeGroup .pill{flex:1 1 auto;min-width:0;padding:8px 14px;white-space:nowrap}
 .pill:hover{color:var(--text);background:rgba(255,255,255,0.04)}.pill.active{background:rgba(0,212,255,0.12);color:var(--cyan)}
 .map-legend{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:100;background:rgba(6,14,36,0.85);border-radius:6px;padding:4px 12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim);border:1px solid rgba(0,212,255,0.08)}
 .map-legend .bar{width:80px;height:6px;border-radius:3px;background:linear-gradient(90deg,#0a4b33,#2d8a4e,#e6a817,#d95a11,#b71c1c)}
@@ -244,7 +246,7 @@ height:600px;
 </div>
 <div class="risk-rank" id="riskRank"><div class="risk-rank-title">🏆 风险区域排行</div><div class="risk-rank-list" id="riskRankList"><div class="risk-rank-item"><span class="risk-rank-name">加载中...</span></div></div></div>
 <div id="mapContainer"></div>
-<div class="controls" id="timeGroup"><button class="pill active" data-range="1d">近1天</button><button class="pill" data-range="3d">近3天</button><button class="pill" data-range="7d">近1周</button></div>
+<div class="controls" id="timeGroup"><button class="pill active" data-range="1d">近1天</button><button class="pill" data-range="3d">近3天</button><button class="pill" data-range="7d">近1周</button><button class="pill" data-range="all">所有数据</button></div>
 <div class="map-legend"><span style="font-size:11px">虫害发生率</span><div class="bar"></div><span style="font-size:11px">低</span><span style="font-size:11px">高</span><span style="opacity:0.3">|</span><span class="leg-dot" style="background:#ff2d78"></span><span style="font-size:11px">有虫害</span><span class="leg-dot" style="background:rgba(0,212,255,0.5)"></span><span style="font-size:11px">无虫害</span></div>
 </div>
 <div class="col-right">
