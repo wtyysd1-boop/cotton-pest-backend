@@ -95,6 +95,24 @@ test('miniapp converts percentage and preserves API response', async () => {
   assert.equal(saved.pestInfo.species, 'bollworm');
 });
 
+test('miniapp saves the recognizer thrips payload without a server error', async () => {
+  const result = await request('/api/reports/miniapp', {
+    results: [
+      { clz: '棉蓟马', prob: '1.0' },
+      { clz: '棉叶螨', prob: '3.88e-29' },
+      { clz: '夜蛾', prob: '1.76e-29' }
+    ],
+    photo: 'https://example.test/thrips.jpg',
+    location: { lng: 112.94, lat: 28.23 },
+    time: '2026-10-30 12:00:00'
+  });
+  assert.equal(result.status, 200);
+  const saved = await PestReport.findById(result.body.data.id).lean();
+  assert.equal(saved.pestInfo.species, 'thrips');
+  assert.equal(saved.pestInfo.confidence, 1);
+  assert.equal(saved.imageUrl, 'https://example.test/thrips.jpg');
+});
+
 test('bad JSON, missing key, bad coordinates and malformed area IDs return 4xx', async () => {
   const invalidJson = await fetch(base + '/api/reports/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{bad' });
   assert.equal(invalidJson.status, 400);
